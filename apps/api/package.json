@@ -1,0 +1,30 @@
+{
+  "name": "@construction-ops/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@construction-ops/database": "workspace:*",
+    "@construction-ops/shared": "workspace:*",
+    "@construction-ops/validation": "workspace:*",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@construction-ops/config": "workspace:*",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.5",
+    "eslint": "^9.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0",
+    "vitest": "^2.1.8"
+  }
+}

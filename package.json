@@ -1,0 +1,19 @@
+{
+  "name": "construction-operations-saas",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --parallel --filter @construction-ops/web --filter @construction-ops/api dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "db:generate": "pnpm --filter @construction-ops/database generate",
+    "db:migrate": "pnpm --filter @construction-ops/database migrate",
+    "db:seed": "pnpm --filter @construction-ops/database seed",
+    "db:studio": "pnpm --filter @construction-ops/database studio"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
