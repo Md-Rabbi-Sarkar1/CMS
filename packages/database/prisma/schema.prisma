@@ -31,6 +31,7 @@ model User {
   email          String           @db.VarChar(255)
   passwordHash   String           @map("password_hash") @db.VarChar(255)
   role           CompanyRole
+  status         UserStatus       @default(ACTIVE)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
   company        Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -149,6 +150,11 @@ enum CompanyRole {
   PROJECT_MANAGER
   ENGINEER
   WORKER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
 }
 
 enum InvitationStatus {

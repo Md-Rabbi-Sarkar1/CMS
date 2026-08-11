@@ -33,3 +33,40 @@ export const updateCompanySchema = z.object({
 });
 
 export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
+
+export const companyRoleSchema = z.enum(["ADMIN", "PROJECT_MANAGER", "ENGINEER", "WORKER"]);
+
+export type CompanyRole = z.infer<typeof companyRoleSchema>;
+
+export const userStatusSchema = z.enum(["ACTIVE", "INACTIVE"]);
+
+export type UserStatus = z.infer<typeof userStatusSchema>;
+
+export const createInvitationSchema = z.object({
+  email: z.string().trim().min(1, "Email is required").email("Invalid email address"),
+  role: companyRoleSchema,
+});
+
+export type CreateInvitationInput = z.infer<typeof createInvitationSchema>;
+
+export const acceptInvitationSchema = z.object({
+  token: z.string().trim().min(1, "Invitation token is required"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export type AcceptInvitationInput = z.infer<typeof acceptInvitationSchema>;
+
+export const updateUserSchema = z.object({
+  role: companyRoleSchema.optional(),
+  status: userStatusSchema.optional(),
+});
+
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+
+export const listUsersQuerySchema = paginationQuerySchema.extend({
+  search: z.string().trim().max(255, "Search must be at most 255 characters").optional(),
+  role: companyRoleSchema.optional(),
+  status: userStatusSchema.optional(),
+});
+
+export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
