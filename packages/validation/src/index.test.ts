@@ -2,11 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import {
   acceptInvitationSchema,
+  canTransitionProjectStatus,
   createInvitationSchema,
+  createProjectSchema,
+  listProjectsQuerySchema,
   listUsersQuerySchema,
   loginSchema,
   paginationQuerySchema,
   updateCompanySchema,
+  updateProjectProgressSchema,
+  updateProjectSchema,
+  updateProjectStatusSchema,
   updateUserSchema,
 } from "./index.js";
 
@@ -178,5 +184,196 @@ describe("validation package", () => {
     const result = listUsersQuerySchema.safeParse({ role: "SUPERVISOR" });
 
     expect(result.success).toBe(false);
+  });
+
+  it("accepts a full project create payload", () => {
+    const result = createProjectSchema.safeParse({
+      name: "Riverside Bridge",
+      description: "Reinforced concrete bridge",
+      location: "Riverside",
+      clientInfo: "City Council",
+      startDate: "2026-09-01",
+      expectedEndDate: "2027-03-15",
+      budget: 250000,
+      managerId: "9f3e6b9a-1b9f-4e7a-9f22-5e1b9d6c2a88",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a minimal project create payload", () => {
+    const result = createProjectSchema.safeParse({ name: "Warehouse Extension" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a project without a name", () => {
+    const result = createProjectSchema.safeParse({});
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a blank project name", () => {
+    const result = createProjectSchema.safeParse({ name: "   " });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a project name longer than 255 characters", () => {
+    const result = createProjectSchema.safeParse({ name: "x".repeat(256) });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid project start date", () => {
+    const result = createProjectSchema.safeParse({ name: "Test Project", startDate: "not-a-date" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a negative project budget", () => {
+    const result = createProjectSchema.safeParse({ name: "Test Project", budget: -10 });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid project manager ID", () => {
+    const result = createProjectSchema.safeParse({ name: "Test Project", managerId: "not-a-uuid" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a partial project update", () => {
+    const result = updateProjectSchema.safeParse({ name: "Renamed Project" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("allows clearing nullable project fields with null", () => {
+    const result = updateProjectSchema.safeParse({ location: null, managerId: null });
+
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.location).toBeNull();
+  });
+
+  it("rejects an empty project update", () => {
+    const result = updateProjectSchema.safeParse({});
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid project update status field", () => {
+    const result = updateProjectSchema.safeParse({ name: 42 });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a valid project status update", () => {
+    const result = updateProjectStatusSchema.safeParse({ status: "ACTIVE" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an invalid project status", () => {
+    const result = updateProjectStatusSchema.safeParse({ status: "DELETED" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a zero project progress update", () => {
+    const result = updateProjectProgressSchema.safeParse({ progressPercentage: 0 });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a 100 project progress update", () => {
+    const result = updateProjectProgressSchema.safeParse({ progressPercentage: 100 });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a negative project progress", () => {
+    const result = updateProjectProgressSchema.safeParse({ progressPercentage: -1 });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a project progress above 100", () => {
+    const result = updateProjectProgressSchema.safeParse({ progressPercentage: 101 });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a non-integer project progress", () => {
+    const result = updateProjectProgressSchema.safeParse({ progressPercentage: 33.5 });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("applies project list query defaults and accepts filters", () => {
+    const result = listProjectsQuerySchema.parse({
+      search: "  bridge  ",
+      status: "ACTIVE",
+      sort: "createdAt:desc",
+    });
+
+    expect(result).toEqual({
+      page: 1,
+      pageSize: 20,
+      search: "bridge",
+      status: "ACTIVE",
+      sort: "createdAt:desc",
+    });
+  });
+
+  it("rejects an invalid project list sort", () => {
+    const result = listProjectsQuerySchema.safeParse({ sort: "budget:desc" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid project list status filter", () => {
+    const result = listProjectsQuerySchema.safeParse({ status: "DRAFT" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("allows a project transition from PLANNING to ACTIVE", () => {
+    expect(canTransitionProjectStatus("PLANNING", "ACTIVE")).toBe(true);
+  });
+
+  it("allows a project transition from PLANNING to CANCELLED", () => {
+    expect(canTransitionProjectStatus("PLANNING", "CANCELLED")).toBe(true);
+  });
+
+  it("allows project transitions from ACTIVE", () => {
+    expect(canTransitionProjectStatus("ACTIVE", "ON_HOLD")).toBe(true);
+    expect(canTransitionProjectStatus("ACTIVE", "COMPLETED")).toBe(true);
+    expect(canTransitionProjectStatus("ACTIVE", "CANCELLED")).toBe(true);
+  });
+
+  it("allows project transitions from ON_HOLD", () => {
+    expect(canTransitionProjectStatus("ON_HOLD", "ACTIVE")).toBe(true);
+    expect(canTransitionProjectStatus("ON_HOLD", "CANCELLED")).toBe(true);
+  });
+
+  it("forbids moving from COMPLETED", () => {
+    expect(canTransitionProjectStatus("COMPLETED", "ACTIVE")).toBe(false);
+    expect(canTransitionProjectStatus("COMPLETED", "CANCELLED")).toBe(false);
+  });
+
+  it("forbids moving from CANCELLED", () => {
+    expect(canTransitionProjectStatus("CANCELLED", "ACTIVE")).toBe(false);
+    expect(canTransitionProjectStatus("CANCELLED", "PLANNING")).toBe(false);
+  });
+
+  it("forbids skipping PLANNING to ON_HOLD or COMPLETED", () => {
+    expect(canTransitionProjectStatus("PLANNING", "ON_HOLD")).toBe(false);
+    expect(canTransitionProjectStatus("PLANNING", "COMPLETED")).toBe(false);
+  });
+
+  it("forbids moving a project backwards to PLANNING", () => {
+    expect(canTransitionProjectStatus("ACTIVE", "PLANNING")).toBe(false);
+    expect(canTransitionProjectStatus("ON_HOLD", "PLANNING")).toBe(false);
   });
 });
