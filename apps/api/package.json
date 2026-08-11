@@ -15,11 +15,20 @@
     "@construction-ops/database": "workspace:*",
     "@construction-ops/shared": "workspace:*",
     "@construction-ops/validation": "workspace:*",
-    "express": "^4.21.2"
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@construction-ops/config": "workspace:*",
-    "@types/express": "^5.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.10.5",
     "eslint": "^9.17.0",
     "tsx": "^4.19.2",

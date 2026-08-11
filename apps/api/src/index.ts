@@ -1,22 +1,34 @@
-import express, { type Express } from "express";
+import { app } from "./app.js";
+import { env } from "./config/env.js";
+import { connectDatabase } from "./providers/database.js";
+import { logger } from "./utils/logger.js";
 
-const app: Express = express();
-const port = Number(process.env.PORT ?? 4000);
+const port = env.PORT;
 
-app.disable("x-powered-by");
-app.use(express.json());
+async function bootstrap(): Promise<void> {
+  try {
+    await connectDatabase();
+  } catch (error) {
+    logger.error("Database connection failed; continuing with health endpoints available", error);
+  }
 
-const server = app.listen(port, () => {
-  console.log(`API listening on port ${String(port)}`);
-});
-
-function shutdown(): void {
-  server.close(() => {
-    process.exit(0);
+  const server = app.listen(port, () => {
+    logger.info(`API listening on port ${String(port)}`);
   });
+
+  function shutdown(): void {
+    server.close(() => {
+      process.exit(0);
+    });
+  }
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+bootstrap().catch((error: unknown) => {
+  logger.error("Failed to start API", error);
+  process.exit(1);
+});
 
 export { app };

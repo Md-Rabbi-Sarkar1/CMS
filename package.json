@@ -10,7 +10,8 @@
     "db:generate": "pnpm --filter @construction-ops/database generate",
     "db:migrate": "pnpm --filter @construction-ops/database migrate",
     "db:seed": "pnpm --filter @construction-ops/database seed",
-    "db:studio": "pnpm --filter @construction-ops/database studio"
+    "db:studio": "pnpm --filter @construction-ops/database studio",
+    "db:reset-admin": "pnpm --filter @construction-ops/database exec tsx prisma/reset-admin.ts"
   },
   "engines": {
     "node": ">=20"
