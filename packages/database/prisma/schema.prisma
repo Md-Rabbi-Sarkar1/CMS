@@ -13,6 +13,8 @@ model Company {
   name        String        @db.VarChar(255)
   slug        String        @unique @db.VarChar(100)
   logoUrl     String?       @map("logo_url") @db.VarChar(2048)
+  contactInfo String?       @map("contact_info") @db.VarChar(500)
+  address     String?       @db.VarChar(1000)
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
   users       User[]

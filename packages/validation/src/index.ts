@@ -13,3 +13,23 @@ export const loginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+export const updateCompanySchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Company name is required")
+    .max(255, "Company name must be at most 255 characters")
+    .optional(),
+  logoUrl: z
+    .union([z.string().url("Invalid URL").max(2048, "Logo URL must be at most 2048 characters"), z.null()])
+    .optional(),
+  contactInfo: z
+    .union([z.string().trim().max(500, "Contact info must be at most 500 characters"), z.null()])
+    .optional(),
+  address: z
+    .union([z.string().trim().max(1000, "Address must be at most 1000 characters"), z.null()])
+    .optional(),
+});
+
+export type UpdateCompanyInput = z.infer<typeof updateCompanySchema>;
