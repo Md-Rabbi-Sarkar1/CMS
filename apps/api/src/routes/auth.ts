@@ -19,6 +19,10 @@ authRouter.post("/logout", (req, res, next) => {
   authController.logout(req, res, next).catch(next);
 });
 
+authRouter.post("/accept-invite", (req, res, next) => {
+  authController.acceptInvite(req, res, next).catch(next);
+});
+
 authRouter.get("/me", authenticate, (req, res, next) => {
   authController.me(req, res, next).catch(next);
 });

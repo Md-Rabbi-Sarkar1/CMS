@@ -1,9 +1,11 @@
 import { RefreshTokenRepository } from "../repositories/refresh-token-repository.js";
 import { UserRepository } from "../repositories/user-repository.js";
-import { comparePassword } from "../utils/password.js";
+import { InvitationRepository } from "../repositories/invitation-repository.js";
+import { comparePassword, hashPassword } from "../utils/password.js";
 import { createAccessToken } from "../utils/jwt.js";
 import { generateRefreshToken, hashRefreshToken } from "../utils/refresh-token.js";
-import { NotFoundError, UnauthorizedError } from "../utils/errors.js";
+import { hashInvitationToken } from "../utils/invitation-token.js";
+import { ConflictError, NotFoundError, UnauthorizedError } from "../utils/errors.js";
 import type { CompanyRole, JWTPayload } from "../types/auth.js";
 
 const REFRESH_TOKEN_EXPIRY_DAYS = 7;
@@ -80,13 +82,16 @@ function buildTokens(user: TokenUser): BuiltTokens {
 export class AuthService {
   private readonly userRepository: UserRepository;
   private readonly refreshTokenRepository: RefreshTokenRepository;
+  private readonly invitationRepository: InvitationRepository;
 
   constructor(
     userRepository = new UserRepository(),
     refreshTokenRepository = new RefreshTokenRepository(),
+    invitationRepository = new InvitationRepository(),
   ) {
     this.userRepository = userRepository;
     this.refreshTokenRepository = refreshTokenRepository;
+    this.invitationRepository = invitationRepository;
   }
 
   async login(email: string, password: string): Promise<LoginResult> {
@@ -149,6 +154,56 @@ export class AuthService {
     if (storedToken) {
       await this.refreshTokenRepository.revokeById(storedToken.id);
     }
+  }
+
+  async acceptInvitation(token: string, password: string): Promise<LoginResult> {
+    const tokenHash = hashInvitationToken(token);
+    const invitation = await this.invitationRepository.findByTokenHash(tokenHash);
+
+    if (!invitation) {
+      throw new UnauthorizedError("Invalid or expired invitation");
+    }
+
+    if (invitation.status !== "PENDING") {
+      throw new UnauthorizedError("Invitation is no longer valid");
+    }
+
+    if (invitation.expiresAt <= new Date()) {
+      await this.invitationRepository.updateStatus(invitation.id, "EXPIRED");
+      throw new UnauthorizedError("Invitation has expired");
+    }
+
+    const existingUser = await this.userRepository.findByEmailInCompany(invitation.email, invitation.companyId);
+
+    if (existingUser) {
+      throw new ConflictError("An account for this email already exists");
+    }
+
+    const passwordHash = await hashPassword(password);
+    const user = await this.userRepository.create({
+      companyId: invitation.companyId,
+      name: invitation.email.split("@")[0] ?? invitation.email,
+      email: invitation.email,
+      passwordHash,
+      role: invitation.role,
+    });
+
+    await this.invitationRepository.markAccepted(invitation.id);
+
+    const tokens = buildTokens(user);
+    await this.refreshTokenRepository.create({
+      user: {
+        connect: { id: user.id },
+      },
+      tokenHash: tokens.refreshTokenHash,
+      expiresAt: tokens.refreshTokenExpiresAt,
+    });
+
+    return {
+      user: toAuthUser(user),
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
   }
 
   async me(userId: string): Promise<AuthUserWithCompanyResponse> {

@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { loginSchema } from "@construction-ops/validation";
+import { acceptInvitationSchema, loginSchema } from "@construction-ops/validation";
 
 import { AuthService } from "../services/auth-service.js";
 import { ValidationError, UnauthorizedError } from "../utils/errors.js";
@@ -13,6 +13,27 @@ export class AuthController {
   constructor(authService = new AuthService()) {
     this.authService = authService;
   }
+
+  acceptInvite = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const parsed = acceptInvitationSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        throw new ValidationError(
+          parsed.error.issues.map((issue) => ({
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
+        );
+      }
+
+      const result = await this.authService.acceptInvitation(parsed.data.token, parsed.data.password);
+      setAuthCookies(res, result.accessToken, result.refreshToken);
+      sendSuccess(res, result.user);
+    } catch (error) {
+      next(error);
+    }
+  };
 
   login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
