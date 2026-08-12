@@ -1,4 +1,5 @@
 import type { ApiErrorResponse, ApiSuccessResponse } from "@construction-ops/shared";
+import type { ProjectStatus } from "@construction-ops/validation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -27,6 +28,44 @@ export interface Company {
   logoUrl: string | null;
   contactInfo: string | null;
   address: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Project {
+  id: string;
+  companyId: string;
+  managerId: string | null;
+  name: string;
+  description: string | null;
+  location: string | null;
+  clientInfo: string | null;
+  startDate: string | null;
+  expectedEndDate: string | null;
+  actualEndDate: string | null;
+  budget: string | null;
+  status: ProjectStatus;
+  progressPercentage: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectMember {
+  userId: string;
+  name: string;
+  email: string;
+  role: CompanyRole;
+  status: "ACTIVE" | "INACTIVE";
+  assignedAt: string;
+}
+
+export interface CompanyUser {
+  id: string;
+  name: string;
+  email: string;
+  role: CompanyRole;
+  status: "ACTIVE" | "INACTIVE";
+  companyId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -102,6 +141,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
 
+  if (body === undefined) {
+    return undefined as T;
+  }
+
   if (!isSuccessResponse(body)) {
     throw new ApiError(response.status, "INVALID_RESPONSE", "Server returned an invalid response");
   }
@@ -119,4 +162,8 @@ export function apiPost<T>(path: string, body: unknown, init?: RequestInit): Pro
 
 export function apiPatch<T>(path: string, body: unknown, init?: RequestInit): Promise<T> {
   return request<T>(path, { ...init, method: "PATCH", body: JSON.stringify(body) });
+}
+
+export function apiDelete<T>(path: string, init?: RequestInit): Promise<T> {
+  return request<T>(path, { ...init, method: "DELETE" });
 }

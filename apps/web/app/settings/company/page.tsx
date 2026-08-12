@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { updateCompanySchema } from "@construction-ops/validation";
@@ -134,7 +135,10 @@ export default function CompanySettingsPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center px-6">
-      <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
+      <Link href="/projects" className="text-sm font-medium text-slate-500 hover:text-slate-900">
+        Back to projects
+      </Link>
+      <p className="mt-6 text-sm font-medium uppercase tracking-wide text-slate-500">
         {company.name}
       </p>
       <h1 className="mt-2 text-3xl font-semibold text-slate-900">Company settings</h1>
