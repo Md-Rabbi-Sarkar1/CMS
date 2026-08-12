@@ -48,6 +48,7 @@ export default function DashboardLayout({
   }
 
   const isProjectsActive = pathname === "/projects" || pathname.startsWith("/projects/");
+  const isTasksActive = pathname === "/tasks" || pathname.startsWith("/tasks/");
   const isSettingsActive = pathname === "/settings/company";
 
   return (
@@ -60,6 +61,12 @@ export default function DashboardLayout({
               className={`text-sm font-medium ${isProjectsActive ? "text-slate-900" : "text-slate-500 hover:text-slate-900"}`}
             >
               Projects
+            </Link>
+            <Link
+              href="/tasks"
+              className={`text-sm font-medium ${isTasksActive ? "text-slate-900" : "text-slate-500 hover:text-slate-900"}`}
+            >
+              Tasks
             </Link>
             <Link
               href="/settings/company"

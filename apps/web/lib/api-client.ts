@@ -1,5 +1,12 @@
 import type { ApiErrorResponse, ApiSuccessResponse } from "@construction-ops/shared";
-import type { ProjectStatus } from "@construction-ops/validation";
+import type {
+  CreateTaskInput,
+  ProjectStatus,
+  TaskPriority,
+  TaskStatus,
+  UpdateTaskInput,
+  UpdateTaskStatusInput,
+} from "@construction-ops/validation";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
 
@@ -70,6 +77,44 @@ export interface CompanyUser {
   updatedAt: string;
 }
 
+export interface Task {
+  id: string;
+  projectId: string;
+  assigneeId: string | null;
+  title: string;
+  description: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  startDate: string | null;
+  dueDate: string | null;
+  completionDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskListResult {
+  tasks: Task[];
+}
+
+export interface CreateTaskRequest extends CreateTaskInput {
+  projectId: string;
+}
+
+export type UpdateTaskRequest = UpdateTaskInput;
+
+export type UpdateTaskStatusRequest = UpdateTaskStatusInput;
+
+export interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+}
+
+export interface ApiResult<T> {
+  data: T;
+  meta: PaginationMeta | undefined;
+}
+
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
@@ -107,7 +152,7 @@ function errorMessageFromBody(body: unknown): string | null {
   return body.error.message;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestWithMeta<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
   const headers: Record<string, string> = {};
 
   if (init?.body != null) {
@@ -142,18 +187,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (body === undefined) {
-    return undefined as T;
+    return { data: undefined as T, meta: undefined };
   }
 
   if (!isSuccessResponse(body)) {
     throw new ApiError(response.status, "INVALID_RESPONSE", "Server returned an invalid response");
   }
 
-  return body.data as T;
+  return { data: body.data as T, meta: body.meta };
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const result = await requestWithMeta<T>(path, init);
+  return result.data;
 }
 
 export function apiGet<T>(path: string, init?: RequestInit): Promise<T> {
   return request<T>(path, init);
+}
+
+export function apiGetWithMeta<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
+  return requestWithMeta<T>(path, init);
 }
 
 export function apiPost<T>(path: string, body: unknown, init?: RequestInit): Promise<T> {

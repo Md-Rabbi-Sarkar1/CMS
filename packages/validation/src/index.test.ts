@@ -4,17 +4,24 @@ import {
   acceptInvitationSchema,
   addProjectMemberSchema,
   canTransitionProjectStatus,
+  canTransitionTaskStatus,
   createInvitationSchema,
   createProjectSchema,
+  createTaskSchema,
   listProjectMembersQuerySchema,
   listProjectsQuerySchema,
+  listTasksQuerySchema,
   listUsersQuerySchema,
   loginSchema,
   paginationQuerySchema,
+  taskPrioritySchema,
+  taskStatusSchema,
   updateCompanySchema,
   updateProjectProgressSchema,
   updateProjectSchema,
   updateProjectStatusSchema,
+  updateTaskSchema,
+  updateTaskStatusSchema,
   updateUserSchema,
 } from "./index.js";
 
@@ -433,5 +440,215 @@ describe("validation package", () => {
     const result = listProjectMembersQuerySchema.safeParse({ page: "abc" });
 
     expect(result.success).toBe(false);
+  });
+
+  it("accepts each valid task priority", () => {
+    for (const priority of ["LOW", "MEDIUM", "HIGH", "URGENT"] as const) {
+      expect(taskPrioritySchema.safeParse(priority).success).toBe(true);
+    }
+  });
+
+  it("rejects an invalid task priority", () => {
+    expect(taskPrioritySchema.safeParse("CRITICAL").success).toBe(false);
+  });
+
+  it("accepts each valid task status", () => {
+    for (const status of ["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "COMPLETED"] as const) {
+      expect(taskStatusSchema.safeParse(status).success).toBe(true);
+    }
+  });
+
+  it("rejects an invalid task status", () => {
+    expect(taskStatusSchema.safeParse("ARCHIVED").success).toBe(false);
+  });
+
+  it("accepts a full task create payload", () => {
+    const result = createTaskSchema.safeParse({
+      title: "Rebar layout for slab B",
+      description: "Lay rebar according to structural drawings",
+      assigneeId: "9f3e6b9a-1b9f-4e7a-9f22-5e1b9d6c2a88",
+      priority: "HIGH",
+      startDate: "2026-09-01",
+      dueDate: "2026-09-10",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a minimal task create payload", () => {
+    const result = createTaskSchema.safeParse({ title: "Order concrete" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a task without a title", () => {
+    const result = createTaskSchema.safeParse({});
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a blank task title", () => {
+    const result = createTaskSchema.safeParse({ title: "   " });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a task title longer than 255 characters", () => {
+    const result = createTaskSchema.safeParse({ title: "x".repeat(256) });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid task assignee ID", () => {
+    const result = createTaskSchema.safeParse({ title: "Test Task", assigneeId: "not-a-uuid" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid task priority", () => {
+    const result = createTaskSchema.safeParse({ title: "Test Task", priority: "CRITICAL" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid task start date", () => {
+    const result = createTaskSchema.safeParse({ title: "Test Task", startDate: "not-a-date" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid task due date", () => {
+    const result = createTaskSchema.safeParse({ title: "Test Task", dueDate: "not-a-date" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a partial task update", () => {
+    const result = updateTaskSchema.safeParse({ title: "Renamed Task" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("allows clearing nullable task fields with null", () => {
+    const result = updateTaskSchema.safeParse({ assigneeId: null, description: null });
+
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.assigneeId).toBeNull();
+  });
+
+  it("rejects an empty task update", () => {
+    const result = updateTaskSchema.safeParse({});
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid task update priority field", () => {
+    const result = updateTaskSchema.safeParse({ priority: "NONE" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid task update assignee ID", () => {
+    const result = updateTaskSchema.safeParse({ assigneeId: "not-a-uuid" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a valid task status update", () => {
+    const result = updateTaskStatusSchema.safeParse({ status: "IN_PROGRESS" });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects an invalid task status update", () => {
+    const result = updateTaskStatusSchema.safeParse({ status: "ARCHIVED" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a task status update without a status", () => {
+    const result = updateTaskStatusSchema.safeParse({});
+
+    expect(result.success).toBe(false);
+  });
+
+  it("applies task list query defaults and accepts filters", () => {
+    const result = listTasksQuerySchema.parse({
+      status: "IN_PROGRESS",
+      assigneeId: "9f3e6b9a-1b9f-4e7a-9f22-5e1b9d6c2a88",
+      sort: "dueDate:asc",
+    });
+
+    expect(result).toEqual({
+      page: 1,
+      pageSize: 20,
+      status: "IN_PROGRESS",
+      assigneeId: "9f3e6b9a-1b9f-4e7a-9f22-5e1b9d6c2a88",
+      sort: "dueDate:asc",
+    });
+  });
+
+  it("rejects an invalid task list status filter", () => {
+    const result = listTasksQuerySchema.safeParse({ status: "DRAFT" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid task list sort", () => {
+    const result = listTasksQuerySchema.safeParse({ sort: "priority:desc" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid task list assignee filter", () => {
+    const result = listTasksQuerySchema.safeParse({ assigneeId: "not-a-uuid" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("allows a task transition from TODO to IN_PROGRESS", () => {
+    expect(canTransitionTaskStatus("TODO", "IN_PROGRESS")).toBe(true);
+  });
+
+  it("allows a task transition from TODO to BLOCKED", () => {
+    expect(canTransitionTaskStatus("TODO", "BLOCKED")).toBe(true);
+  });
+
+  it("allows task transitions from IN_PROGRESS", () => {
+    expect(canTransitionTaskStatus("IN_PROGRESS", "REVIEW")).toBe(true);
+    expect(canTransitionTaskStatus("IN_PROGRESS", "BLOCKED")).toBe(true);
+  });
+
+  it("allows task transitions from REVIEW", () => {
+    expect(canTransitionTaskStatus("REVIEW", "COMPLETED")).toBe(true);
+    expect(canTransitionTaskStatus("REVIEW", "IN_PROGRESS")).toBe(true);
+    expect(canTransitionTaskStatus("REVIEW", "BLOCKED")).toBe(true);
+  });
+
+  it("allows task transitions from BLOCKED", () => {
+    expect(canTransitionTaskStatus("BLOCKED", "IN_PROGRESS")).toBe(true);
+    expect(canTransitionTaskStatus("BLOCKED", "REVIEW")).toBe(true);
+  });
+
+  it("forbids moving a task from COMPLETED", () => {
+    expect(canTransitionTaskStatus("COMPLETED", "IN_PROGRESS")).toBe(false);
+    expect(canTransitionTaskStatus("COMPLETED", "TODO")).toBe(false);
+    expect(canTransitionTaskStatus("COMPLETED", "REVIEW")).toBe(false);
+  });
+
+  it("forbids moving a task backwards from IN_PROGRESS to TODO", () => {
+    expect(canTransitionTaskStatus("IN_PROGRESS", "TODO")).toBe(false);
+  });
+
+  it("forbids skipping task statuses", () => {
+    expect(canTransitionTaskStatus("TODO", "REVIEW")).toBe(false);
+    expect(canTransitionTaskStatus("TODO", "COMPLETED")).toBe(false);
+    expect(canTransitionTaskStatus("IN_PROGRESS", "COMPLETED")).toBe(false);
+  });
+
+  it("forbids task self-transitions", () => {
+    expect(canTransitionTaskStatus("TODO", "TODO")).toBe(false);
+    expect(canTransitionTaskStatus("BLOCKED", "BLOCKED")).toBe(false);
+    expect(canTransitionTaskStatus("REVIEW", "REVIEW")).toBe(false);
   });
 });

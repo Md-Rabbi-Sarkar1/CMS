@@ -194,3 +194,95 @@ export type AddProjectMemberInput = z.infer<typeof addProjectMemberSchema>;
 export const listProjectMembersQuerySchema = paginationQuerySchema;
 
 export type ListProjectMembersQuery = z.infer<typeof listProjectMembersQuerySchema>;
+
+export const taskPrioritySchema = z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]);
+
+export type TaskPriority = z.infer<typeof taskPrioritySchema>;
+
+export const taskStatusSchema = z.enum(["TODO", "IN_PROGRESS", "BLOCKED", "REVIEW", "COMPLETED"]);
+
+export type TaskStatus = z.infer<typeof taskStatusSchema>;
+
+export const TASK_STATUS_TRANSITIONS: Record<TaskStatus, readonly TaskStatus[]> = {
+  TODO: ["IN_PROGRESS", "BLOCKED"],
+  IN_PROGRESS: ["REVIEW", "BLOCKED"],
+  BLOCKED: ["IN_PROGRESS", "REVIEW"],
+  REVIEW: ["COMPLETED", "IN_PROGRESS", "BLOCKED"],
+  COMPLETED: [],
+};
+
+export function canTransitionTaskStatus(from: TaskStatus, to: TaskStatus): boolean {
+  return TASK_STATUS_TRANSITIONS[from].includes(to);
+}
+
+export const createTaskSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, "Task title is required")
+    .max(255, "Task title must be at most 255 characters"),
+  description: z
+    .string()
+    .trim()
+    .max(10000, "Description must be at most 10000 characters")
+    .optional(),
+  assigneeId: z.string().uuid("Invalid assignee ID").optional(),
+  priority: taskPrioritySchema.optional(),
+  startDate: z.string().date("Invalid start date").optional(),
+  dueDate: z.string().date("Invalid due date").optional(),
+});
+
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+
+export const updateTaskSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1, "Task title is required")
+      .max(255, "Task title must be at most 255 characters")
+      .optional(),
+    description: z
+      .union([z.string().trim().max(10000, "Description must be at most 10000 characters"), z.null()])
+      .optional(),
+    assigneeId: z.union([z.string().uuid("Invalid assignee ID"), z.null()]).optional(),
+    priority: taskPrioritySchema.optional(),
+    startDate: z.union([z.string().date("Invalid start date"), z.null()]).optional(),
+    dueDate: z.union([z.string().date("Invalid due date"), z.null()]).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (Object.keys(data).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["body"],
+        message: "At least one field must be provided",
+      });
+    }
+  });
+
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+export const updateTaskStatusSchema = z.object({
+  status: taskStatusSchema,
+});
+
+export type UpdateTaskStatusInput = z.infer<typeof updateTaskStatusSchema>;
+
+export const taskSortSchema = z.enum([
+  "createdAt:asc",
+  "createdAt:desc",
+  "dueDate:asc",
+  "dueDate:desc",
+  "title:asc",
+  "title:desc",
+]);
+
+export type TaskSort = z.infer<typeof taskSortSchema>;
+
+export const listTasksQuerySchema = paginationQuerySchema.extend({
+  status: taskStatusSchema.optional(),
+  assigneeId: z.string().uuid("Invalid assignee ID").optional(),
+  sort: taskSortSchema.optional(),
+});
+
+export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;
