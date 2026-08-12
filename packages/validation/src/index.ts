@@ -184,3 +184,13 @@ export const listProjectsQuerySchema = paginationQuerySchema.extend({
 });
 
 export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;
+
+export const addProjectMemberSchema = z.object({
+  userId: z.string().uuid("Invalid user ID"),
+});
+
+export type AddProjectMemberInput = z.infer<typeof addProjectMemberSchema>;
+
+export const listProjectMembersQuerySchema = paginationQuerySchema;
+
+export type ListProjectMembersQuery = z.infer<typeof listProjectMembersQuerySchema>;

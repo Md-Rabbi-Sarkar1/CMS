@@ -8,6 +8,7 @@ import { authRouter } from "./routes/auth.js";
 import { companyRouter } from "./routes/company.js";
 import { healthRouter } from "./routes/health.js";
 import { projectsRouter } from "./routes/projects.js";
+import { teamRouter } from "./routes/team.js";
 import { usersRouter } from "./routes/users.js";
 import { NotFoundError } from "./utils/errors.js";
 
@@ -24,6 +25,7 @@ app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/company", companyRouter);
 app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/projects", projectsRouter);
+app.use("/api/v1/projects", teamRouter);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError("Route not found"));

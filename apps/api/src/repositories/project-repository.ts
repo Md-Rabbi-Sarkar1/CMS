@@ -1,4 +1,12 @@
-import type { ListProjectsQuery, ProjectSort, ProjectStatus, UpdateProjectInput } from "@construction-ops/validation";
+import type {
+  CompanyRole,
+  ListProjectMembersQuery,
+  ListProjectsQuery,
+  ProjectSort,
+  ProjectStatus,
+  UpdateProjectInput,
+  UserStatus,
+} from "@construction-ops/validation";
 
 import { prisma } from "../providers/database.js";
 
@@ -37,6 +45,31 @@ export interface ProjectAccessFilter {
   memberId?: string;
 }
 
+export interface ProjectMemberRecord {
+  userId: string;
+  name: string;
+  email: string;
+  role: CompanyRole;
+  status: UserStatus;
+  assignedAt: Date;
+}
+
+export interface ProjectMemberListResult {
+  members: ProjectMemberRecord[];
+  total: number;
+}
+
+export type AddProjectMemberResult =
+  | { status: "added"; member: ProjectMemberRecord }
+  | { status: "duplicate" }
+  | { status: "project_not_found" }
+  | { status: "user_not_found" };
+
+export type RemoveProjectMemberResult =
+  | { status: "removed" }
+  | { status: "project_not_found" }
+  | { status: "member_not_found" };
+
 type ProjectOrderBy =
   | { createdAt: "asc" | "desc" }
   | { name: "asc" | "desc" }
@@ -60,6 +93,30 @@ interface ProjectRow {
   updatedAt: Date;
 }
 
+interface ProjectMemberRow {
+  assignedAt: Date;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: CompanyRole;
+    status: UserStatus;
+  };
+}
+
+const PROJECT_MEMBER_SELECT = {
+  assignedAt: true,
+  user: {
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      status: true,
+    },
+  },
+} as const;
+
 const PROJECT_ORDER_BY: Record<ProjectSort, ProjectOrderBy> = {
   "createdAt:asc": { createdAt: "asc" },
   "createdAt:desc": { createdAt: "desc" },
@@ -73,6 +130,17 @@ function toProjectRecord(project: ProjectRow): ProjectRecord {
   return {
     ...project,
     budget: project.budget === null ? null : project.budget.toString(),
+  };
+}
+
+function toProjectMemberRecord(member: ProjectMemberRow): ProjectMemberRecord {
+  return {
+    userId: member.user.id,
+    name: member.user.name,
+    email: member.user.email,
+    role: member.user.role,
+    status: member.user.status,
+    assignedAt: member.assignedAt,
   };
 }
 
@@ -202,6 +270,95 @@ export class ProjectRepository {
     });
 
     return membership !== null;
+  }
+
+  async listMembers(
+    projectId: string,
+    companyId: string,
+    query: ListProjectMembersQuery,
+  ): Promise<ProjectMemberListResult | null> {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, companyId },
+      select: { id: true },
+    });
+
+    if (project === null) {
+      return null;
+    }
+
+    const where = { projectId };
+    const [members, total] = await Promise.all([
+      prisma.projectMember.findMany({
+        where,
+        select: PROJECT_MEMBER_SELECT,
+        orderBy: { assignedAt: "asc" },
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
+      }),
+      prisma.projectMember.count({ where }),
+    ]);
+
+    return {
+      members: members.map(toProjectMemberRecord),
+      total,
+    };
+  }
+
+  async addMember(projectId: string, companyId: string, userId: string): Promise<AddProjectMemberResult> {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, companyId },
+      select: { id: true },
+    });
+
+    if (project === null) {
+      return { status: "project_not_found" };
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { id: userId, companyId },
+      select: { id: true },
+    });
+
+    if (user === null) {
+      return { status: "user_not_found" };
+    }
+
+    const existing = await prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId } },
+      select: { id: true },
+    });
+
+    if (existing !== null) {
+      return { status: "duplicate" };
+    }
+
+    const member = await prisma.projectMember.create({
+      data: { projectId, userId },
+      select: PROJECT_MEMBER_SELECT,
+    });
+
+    return { status: "added", member: toProjectMemberRecord(member) };
+  }
+
+  async removeMember(projectId: string, companyId: string, userId: string): Promise<RemoveProjectMemberResult> {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, companyId },
+      select: { id: true },
+    });
+
+    if (project === null) {
+      return { status: "project_not_found" };
+    }
+
+    const result = await prisma.projectMember.deleteMany({
+      where: { projectId, userId },
+    });
+
+    if (result.count === 0) {
+      return { status: "member_not_found" };
+    }
+
+    return { status: "removed" };
   }
 
   private buildWhere(companyId: string, query: ListProjectsQuery, access?: ProjectAccessFilter) {

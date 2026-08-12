@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   acceptInvitationSchema,
+  addProjectMemberSchema,
   canTransitionProjectStatus,
   createInvitationSchema,
   createProjectSchema,
+  listProjectMembersQuerySchema,
   listProjectsQuerySchema,
   listUsersQuerySchema,
   loginSchema,
@@ -375,5 +377,61 @@ describe("validation package", () => {
   it("forbids moving a project backwards to PLANNING", () => {
     expect(canTransitionProjectStatus("ACTIVE", "PLANNING")).toBe(false);
     expect(canTransitionProjectStatus("ON_HOLD", "PLANNING")).toBe(false);
+  });
+
+  it("accepts a valid project member user ID", () => {
+    const result = addProjectMemberSchema.safeParse({
+      userId: "9f3e6b9a-1b9f-4e7a-9f22-5e1b9d6c2a88",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a missing project member user ID", () => {
+    const result = addProjectMemberSchema.safeParse({});
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid project member user ID", () => {
+    const result = addProjectMemberSchema.safeParse({ userId: "not-a-uuid" });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a non-string project member user ID", () => {
+    const result = addProjectMemberSchema.safeParse({ userId: 42 });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("applies project member list query defaults", () => {
+    const result = listProjectMembersQuerySchema.parse({});
+
+    expect(result).toEqual({ page: 1, pageSize: 20 });
+  });
+
+  it("coerces project member list query pagination values", () => {
+    const result = listProjectMembersQuerySchema.parse({ page: "2", pageSize: "50" });
+
+    expect(result).toEqual({ page: 2, pageSize: 50 });
+  });
+
+  it("rejects a project member list page below 1", () => {
+    const result = listProjectMembersQuerySchema.safeParse({ page: 0 });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a project member list page size above 100", () => {
+    const result = listProjectMembersQuerySchema.safeParse({ pageSize: 101 });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a non-numeric project member list page", () => {
+    const result = listProjectMembersQuerySchema.safeParse({ page: "abc" });
+
+    expect(result.success).toBe(false);
   });
 });
