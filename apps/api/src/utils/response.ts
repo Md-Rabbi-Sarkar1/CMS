@@ -2,15 +2,8 @@ import type { Response } from "express";
 
 import type { ApiErrorResponse, ApiSuccessResponse } from "@construction-ops/shared";
 
-export function sendSuccess(
-  res: Response,
-  data: unknown,
-  statusCode = 200,
-  meta?: ApiSuccessResponse<unknown>["meta"],
-): void {
-  res.status(statusCode).json(
-    meta === undefined ? { success: true, data } : { success: true, data, meta },
-  );
+export function sendSuccess(res: Response, data: unknown, statusCode = 200): void {
+  res.status(statusCode).json({ success: true, data });
 }
 
 export function sendError(

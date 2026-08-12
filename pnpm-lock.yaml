@@ -6,7 +6,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
 
   apps/api:
     dependencies:
@@ -157,8 +161,11 @@ importers:
       '@construction-ops/config':
         specifier: workspace:*
         version: link:../config
+      '@types/bcryptjs':
+        specifier: ^2.4.6
+        version: 2.4.6
       '@types/node':
-        specifier: ^22.10.5
+        specifier: ^22.20.1
         version: 22.20.1
       bcryptjs:
         specifier: ^2.4.3

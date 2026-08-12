@@ -2,7 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient, DailyWorkReport } from "@prisma/client";
+
+export type { Prisma, PrismaClient, DailyWorkReport };
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const visitedPaths = new Set<string>();
