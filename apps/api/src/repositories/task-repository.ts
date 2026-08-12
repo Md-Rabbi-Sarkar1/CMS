@@ -222,4 +222,28 @@ export class TaskRepository {
 
     return this.findById(id, companyId);
   }
+
+  async countByCompany(companyId: string): Promise<number> {
+    return prisma.task.count({
+      where: { project: { companyId } },
+    });
+  }
+
+  async countByProject(projectId: string): Promise<number> {
+    return prisma.task.count({
+      where: { projectId },
+    });
+  }
+
+  async countByStatus(companyId: string, status: TaskStatus): Promise<number> {
+    return prisma.task.count({
+      where: { project: { companyId }, status },
+    });
+  }
+
+  async countByProjectStatus(projectId: string, status: TaskStatus): Promise<number> {
+    return prisma.task.count({
+      where: { projectId, status },
+    });
+  }
 }

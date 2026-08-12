@@ -361,6 +361,18 @@ export class ProjectRepository {
     return { status: "removed" };
   }
 
+  async countByCompany(companyId: string): Promise<number> {
+    return prisma.project.count({
+      where: { companyId },
+    });
+  }
+
+  async countByStatus(companyId: string, status: ProjectStatus): Promise<number> {
+    return prisma.project.count({
+      where: { companyId, status },
+    });
+  }
+
   private buildWhere(companyId: string, query: ListProjectsQuery, access?: ProjectAccessFilter) {
     const andConditions = [
       query.search !== undefined

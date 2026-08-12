@@ -119,4 +119,10 @@ export class UserRepository {
       })
       .then((result) => result.count);
   }
+
+  countByCompany(companyId: string): Promise<number> {
+    return prisma.user.count({
+      where: { companyId },
+    });
+  }
 }

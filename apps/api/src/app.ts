@@ -4,6 +4,7 @@ import express, { type Express } from "express";
 
 import { env } from "./config/env.js";
 import { errorHandler } from "./middleware/error-handler.js";
+import { analyticsRouter } from "./routes/analytics.js";
 import { authRouter } from "./routes/auth.js";
 import { companyRouter } from "./routes/company.js";
 import { healthRouter } from "./routes/health.js";
@@ -28,6 +29,7 @@ app.use("/api/v1/users", usersRouter);
 app.use("/api/v1/projects", projectsRouter);
 app.use("/api/v1/projects", teamRouter);
 app.use("/api/v1", tasksRouter);
+app.use("/api/v1", analyticsRouter);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError("Route not found"));

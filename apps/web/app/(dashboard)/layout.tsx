@@ -47,6 +47,7 @@ export default function DashboardLayout({
     }
   }
 
+  const isDashboardActive = pathname === "/dashboard";
   const isProjectsActive = pathname === "/projects" || pathname.startsWith("/projects/");
   const isTasksActive = pathname === "/tasks" || pathname.startsWith("/tasks/");
   const isSettingsActive = pathname === "/settings/company";
@@ -56,6 +57,12 @@ export default function DashboardLayout({
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <nav className="flex items-center gap-6">
+            <Link
+              href="/dashboard"
+              className={`text-sm font-medium ${isDashboardActive ? "text-slate-900" : "text-slate-500 hover:text-slate-900"}`}
+            >
+              Dashboard
+            </Link>
             <Link
               href="/projects"
               className={`text-sm font-medium ${isProjectsActive ? "text-slate-900" : "text-slate-500 hover:text-slate-900"}`}

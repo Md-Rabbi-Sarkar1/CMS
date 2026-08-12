@@ -104,6 +104,26 @@ export type UpdateTaskRequest = UpdateTaskInput;
 
 export type UpdateTaskStatusRequest = UpdateTaskStatusInput;
 
+export interface CompanyDashboard {
+  totalProjects: number;
+  activeProjects: number;
+  completedProjects: number;
+  totalTeamMembers: number;
+  totalTasks: number;
+  completedTasks: number;
+  openTasks: number;
+}
+
+export interface ProjectDashboard {
+  progressPercentage: number;
+  budget: string | null;
+  totalTasks: number;
+  completedTasks: number;
+  openTasks: number;
+  openIssues: number;
+  recentActivity: string[];
+}
+
 export interface PaginationMeta {
   page: number;
   pageSize: number;
