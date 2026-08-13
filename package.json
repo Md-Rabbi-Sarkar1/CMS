@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "pnpm --parallel --filter @construction-ops/web --filter @construction-ops/api dev",
     "build": "pnpm -r build",
+    "build:packages": "pnpm --filter @construction-ops/shared build && pnpm --filter @construction-ops/validation build && pnpm --filter @construction-ops/database build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",

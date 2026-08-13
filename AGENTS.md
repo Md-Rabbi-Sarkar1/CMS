@@ -40,3 +40,9 @@
 ## Verification commands
 - `pnpm -r test` · `pnpm -r typecheck` · `pnpm -r lint` · `pnpm -r build` · `git diff --check`
 - Tests need `DATABASE_URL` env (local: `postgresql://postgres:postgres@localhost:5432/construction_ops?schema=public`); postgres runs in Docker on port 5432.
+
+## Workspace package build dependency (critical for `pnpm dev`)
+- `@construction-ops/shared`, `@construction-ops/validation`, `@construction-ops/database` are consumed by the API via their compiled `dist/` (each package's `package.json` `exports` → `./dist/index.js`), and `dist/` is **gitignored**.
+- The web app compiles these from source (`transpilePackages` in `next.config.ts`), so it needs no `dist/`. The API (`tsx`) does NOT transpile them — it loads `dist/`. A missing/stale `dist/` causes a runtime `ERR_MODULE_NOT_FOUND` / "does not provide an export named 'createDocumentSchema'" crash.
+- Root `pnpm build` (`pnpm -r build`) builds packages in topological order, so the build path is reproducible from a fresh checkout. But `pnpm dev` never built the deps.
+- Fix: root `build:packages` script builds shared → validation → database; `apps/api` `dev` runs `pnpm -w build:packages && tsx watch src/index.ts` first. So `cd apps/api && pnpm dev` now works from a fresh checkout (after `pnpm install`). `database`'s `prebuild` (prisma generate) runs automatically (pnpm 9 runs pre/post scripts by default).
