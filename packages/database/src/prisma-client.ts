@@ -2,9 +2,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Prisma, PrismaClient, DailyWorkReport } from "@prisma/client";
+import { Prisma, PrismaClient, DailyWorkReport, Material, InventoryTransaction, Expense, Issue, Document, Notification, CompanyRole, ProjectStatus, TaskStatus, TaskPriority, ExpenseCategory, ExpenseStatus, IssueStatus, InventoryTxType, NotificationType, InvitationStatus } from "@prisma/client";
 
-export type { Prisma, PrismaClient, DailyWorkReport };
+export type { Prisma, PrismaClient, DailyWorkReport, Material, InventoryTransaction, Expense, Issue, Document, Notification, CompanyRole, ProjectStatus, TaskStatus, TaskPriority, ExpenseCategory, ExpenseStatus, IssueStatus, InventoryTxType, NotificationType, InvitationStatus };
+export const Decimal = Prisma.Decimal;
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const visitedPaths = new Set<string>();

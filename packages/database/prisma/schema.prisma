@@ -18,6 +18,7 @@ model Company {
   users       User[]
   invitations Invitation[]
   projects    Project[]
+  materials   Material[]
 
   @@map("companies")
 }
@@ -37,6 +38,13 @@ model User {
   managedProjects Project[]       @relation("ProjectManager")
   assignedTasks  Task[]           @relation("TaskAssignee")
   dailyWorkReports DailyWorkReport[] @relation("ReportSubmitter")
+  reportedIssues Issue[]          @relation("IssueReporter")
+  assignedIssues  Issue[]         @relation("IssueAssignee")
+  submittedExpenses Expense[]     @relation("ExpenseSubmitter")
+  reviewedExpenses  Expense[]     @relation("ExpenseReviewer")
+  inventoryTransactions InventoryTransaction[] @relation("InventoryActor")
+  uploadedDocuments Document[]    @relation("DocumentUploader")
+  notifications  Notification[]
 
   @@unique([companyId, email])
   @@index([companyId])
@@ -99,6 +107,10 @@ model Project {
   members            ProjectMember[]
   tasks              Task[]
   dailyWorkReports   DailyWorkReport[]
+  expenses           Expense[]
+  issues             Issue[]
+  documents          Document[]
+  inventoryTransactions InventoryTransaction[]
 
   @@index([companyId])
   @@index([managerId])
@@ -185,6 +197,124 @@ model ReportWorker {
   @@map("report_workers")
 }
 
+/// Phase 13 — Materials & inventory (company-scoped).
+model Material {
+  id            String   @id @default(uuid()) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  name          String   @db.VarChar(255)
+  unit          String   @db.VarChar(50)
+  currentStock  Decimal  @map("current_stock") @db.Decimal(12, 2) @default(0)
+  reorderLevel  Decimal  @map("reorder_level") @db.Decimal(12, 2) @default(0)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions  InventoryTransaction[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("materials")
+}
+
+/// Append-only audit log for material stock changes.
+model InventoryTransaction {
+  id          String           @id @default(uuid()) @db.Uuid
+  materialId  String           @map("material_id") @db.Uuid
+  projectId   String?          @map("project_id") @db.Uuid
+  type        InventoryTxType
+  quantity    Decimal          @db.Decimal(12, 2)
+  note        String?          @db.Text
+  performedById String        @map("performed_by_id") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  material    Material         @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  project     Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  performedBy User             @relation("InventoryActor", fields: [performedById], references: [id])
+
+  @@index([materialId, createdAt])
+  @@index([projectId])
+  @@map("inventory_transactions")
+}
+
+/// Phase 14 — Expenses (project-scoped; approval workflow).
+model Expense {
+  id           String         @id @default(uuid()) @db.Uuid
+  projectId    String         @map("project_id") @db.Uuid
+  submittedById String       @map("submitted_by_id") @db.Uuid
+  category     ExpenseCategory
+  amount       Decimal        @db.Decimal(12, 2)
+  description  String         @db.Text
+  expenseDate  DateTime       @map("expense_date") @db.Date
+  status       ExpenseStatus  @default(PENDING)
+  reviewedById String?        @map("reviewed_by_id") @db.Uuid
+  reviewedAt   DateTime?      @map("reviewed_at") @db.Timestamptz(6)
+  rejectionReason String?     @map("rejection_reason") @db.Text
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project      Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  submittedBy  User           @relation("ExpenseSubmitter", fields: [submittedById], references: [id])
+  reviewedBy   User?          @relation("ExpenseReviewer", fields: [reviewedById], references: [id])
+
+  @@index([projectId, status])
+  @@index([submittedById])
+  @@map("expenses")
+}
+
+/// Phase 15 — Construction issues (project-scoped).
+model Issue {
+  id           String       @id @default(uuid()) @db.Uuid
+  projectId    String       @map("project_id") @db.Uuid
+  reporterId   String       @map("reporter_id") @db.Uuid
+  assigneeId   String?      @map("assignee_id") @db.Uuid
+  title        String       @db.VarChar(255)
+  description  String       @db.Text
+  location     String?      @db.VarChar(255)
+  priority     TaskPriority @default(MEDIUM)
+  status       IssueStatus  @default(OPEN)
+  resolution   String?      @db.Text
+  resolvedAt   DateTime?    @map("resolved_at") @db.Timestamptz(6)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reporter     User         @relation("IssueReporter", fields: [reporterId], references: [id])
+  assignee     User?        @relation("IssueAssignee", fields: [assigneeId], references: [id])
+
+  @@index([projectId, status])
+  @@index([assigneeId])
+  @@map("issues")
+}
+
+/// Phase 16 — Document metadata only (storage_key nullable; no binary in MVP).
+model Document {
+  id           String   @id @default(uuid()) @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  uploadedById String   @map("uploaded_by_id") @db.Uuid
+  name         String   @db.VarChar(255)
+  type         String   @db.VarChar(100)
+  mimeType     String   @map("mime_type") @db.VarChar(255)
+  sizeBytes    Int       @map("size_bytes") @db.Integer
+  storageKey   String?  @map("storage_key") @db.VarChar(2048)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploadedBy   User     @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([projectId])
+  @@map("documents")
+}
+
+/// Phase 17 — Database-backed notifications (user-scoped).
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(255)
+  message   String           @db.Text
+  readAt    DateTime?        @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
 enum CompanyRole {
   ADMIN
   PROJECT_MANAGER
@@ -220,4 +350,45 @@ enum TaskStatus {
   BLOCKED
   REVIEW
   COMPLETED
+}
+
+enum ExpenseCategory {
+  MATERIALS
+  LABOR
+  TRANSPORTATION
+  EQUIPMENT
+  OTHER
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum IssueStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  RESOLVED
+  VERIFIED
+  CLOSED
+}
+
+enum InventoryTxType {
+  PURCHASE
+  USAGE
+  ADJUSTMENT
+}
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_DEADLINE
+  REPORT_SUBMITTED
+  ISSUE_CREATED
+  EXPENSE_PENDING
+  LOW_STOCK
+  PROJECT_ASSIGNMENT
+  DOCUMENT_UPLOADED
+  INVITATION_ACCEPTED
 }
