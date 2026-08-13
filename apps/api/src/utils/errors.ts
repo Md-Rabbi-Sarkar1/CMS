@@ -33,9 +33,23 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+export class ForbiddenError extends AppError {
+  constructor(message = "Forbidden") {
+    super(message, 403, "FORBIDDEN");
+    this.name = "ForbiddenError";
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(message = "Resource not found") {
     super(message, 404, "NOT_FOUND");
     this.name = "NotFoundError";
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message = "Conflict") {
+    super(message, 409, "CONFLICT");
+    this.name = "ConflictError";
   }
 }
