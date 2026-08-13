@@ -1,7 +1,8 @@
-<<<<<<< HEAD
-declare const process: { env: Record<string, string | undefined>; exit: (code?: number) => never };
-=======
->>>>>>> feat/phase-12-daily-work-reports
+declare const process: {
+  env: Record<string, string | undefined>;
+  exit: (code?: number) => never;
+};
+
 import bcrypt from "bcryptjs";
 
 import { prisma } from "../src/index.js";
