@@ -1,15 +1,3 @@
-declare const process: { env: Record<string, string | undefined>; exit: (code?: number) => never };
-import bcrypt from "bcryptjs";
-
-import { prisma } from "../src/index.js";
-
-const COMPANY_SLUG = "demo-construction";
-const COMPANY_NAME = "Demo Construction Co.";
-const ADMIN_EMAIL = "admin@demo.local";
-const ADMIN_NAME = "Alex Admin";
-const ADMIN_PASSWORD = process.env.DEV_ADMIN_PASSWORD ?? "Password123!";
-const SALT_ROUNDS = 12;
-
 async function main(): Promise<void> {
   const company = await prisma.company.upsert({
     where: { slug: COMPANY_SLUG },

@@ -8,6 +8,7 @@ import { analyticsRouter } from "./routes/analytics.js";
 import { authRouter } from "./routes/auth.js";
 import { companyRouter } from "./routes/company.js";
 import { healthRouter } from "./routes/health.js";
+import { reportRouter } from "./routes/reports.js";
 import { NotFoundError } from "./utils/errors.js";
 
 export const app: Express = express();
@@ -20,6 +21,7 @@ app.use(cookieParser());
 
 app.use("/api/v1/health", healthRouter);
 app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/reports", reportRouter);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError("Route not found"));

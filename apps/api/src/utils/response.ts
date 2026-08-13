@@ -2,8 +2,22 @@ import type { Response } from "express";
 
 import type { ApiErrorResponse, ApiSuccessResponse } from "@construction-ops/shared";
 
-export function sendSuccess(res: Response, data: unknown, statusCode = 200): void {
-  res.status(statusCode).json({ success: true, data });
+export function sendSuccess(
+  res: Response,
+  data: unknown,
+  statusCode = 200,
+  page?: number,
+  pageSize?: number,
+  total?: number,
+): void {
+  const body: { success: true; data: unknown; meta?: { page: number; pageSize: number; total: number } } = {
+    success: true,
+    data,
+  };
+  if (page !== undefined && pageSize !== undefined && total !== undefined) {
+    body.meta = { page, pageSize, total };
+  }
+  res.status(statusCode).json(body);
 }
 
 export function sendError(
