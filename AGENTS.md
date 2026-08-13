@@ -20,11 +20,22 @@
 - Prisma nullable optional fields: normalize `undefined → null` at the Prisma boundary for CREATE; for UPDATE only set fields that are `!== undefined` (narrowed values need no `?? null`).
 - Atomic worker replacement: do `deleteMany` + `createMany` of workers inside the same `prisma.$transaction` as the parent `update`.
 
-## Phase 12 — Daily Work Reports (DONE, uncommitted)
+## Phase 12 — Daily Work Reports (DONE, verified, committed in 142d292; broader project changes + web still uncommitted)
 - Models: `DailyWorkReport` + `ReportWorker` (workers are free-text names, NOT user FKs).
 - Routes mounted at `/api/v1/reports` (CRUD + list with pagination/filters).
-- Migration `20260812132334_init` applied; `prisma migrate status` = up to date, no drift.
-- Tests: validation 119, report-management 30, report-http 19. All pass, 0 skipped.
+- Migration `20260812132334_init` contains the report tables; second migration `20260812154015_add_materials_expenses_issues_documents_notifications` covers later modules.
+- DB was originally created via `prisma db push` (no `_prisma_migrations` tracking table). Repaired NON-destructively with `prisma migrate resolve --applied` for both migrations — this only creates/writes the `_prisma_migrations` table; it does NOT touch data or schema. `prisma migrate status` = "Database schema is up to date!", `prisma migrate diff` = no drift.
+- Auth: HTTP tests pass 19/19 — the previous "401" report was stale; cookie-based auth via supertest agent works correctly. No auth weakening.
+- Worker replacement: atomic via `$transaction` (deleteMany + createMany). Tests pass 30/30, 0 skipped.
+- Verified counts: validation 155 (115 reports + 4 index + 36 modules), report-management 30, report-http 19, api total 50. 0 skipped tests anywhere.
+- Web build: `apps/web/package.json` build script is `NODE_ENV=production next build` because root `.env` sets `NODE_ENV=development` (Next dev-mode prerender of internal /_error + /404 pages fails with "<Html> should not be imported outside of pages/_document"). Production build needs production NODE_ENV.
+- React 19 types deprecate `React.FormEvent` entirely — use `React.SyntheticEvent<HTMLFormElement>` for form onSubmit handlers. Client components using `useSearchParams()` must be wrapped in a `<Suspense>` boundary (login + accept-invite pages).
+- Full verification (all green): typecheck, lint, build, git diff --check across all packages. .env is gitignored; no secrets in diff.
+
+## Phases 13+ modules (created, typecheck/lint/build clean, uncommitted)
+- Materials/Inventory, Expense, Issue, Document, Notification, Analytics modules (repo/service/controller/routes) all mounted in `app.ts`.
+- Schema facts: `Material.currentStock`/`reorderLevel` are `Decimal` (export `Decimal = Prisma.Decimal` from `@construction-ops/database`); `Expense` has no `companyId` (scoped via `project.companyId`); `InventoryTransaction.performedById` required; `Issue` has no `severity` (uses `TaskPriority`); `Document.type` is plain string; `Notification` has no `link`/`metadata`.
+- `Decimal` is a runtime class — import as value from database pkg; use `Prisma.Decimal` as the type.
 
 ## Verification commands
 - `pnpm -r test` · `pnpm -r typecheck` · `pnpm -r lint` · `pnpm -r build` · `git diff --check`
