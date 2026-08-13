@@ -36,12 +36,37 @@ interface RequestOptions {
   signal?: AbortSignal | undefined;
 }
 
+// Server Components run server-side where `credentials: "include"` on fetch does
+// not forward the browser's cookies. Read them from Next's request store and
+// add an explicit Cookie header. On the client this throws / returns null and
+// we fall back to `credentials: "include"`.
+async function getServerCookieHeader(): Promise<string | null> {
+  try {
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    const access = store.get("access_token")?.value;
+    const refresh = store.get("refresh_token")?.value;
+    if (!access && !refresh) return null;
+    const parts: string[] = [];
+    if (access) parts.push(`access_token=${access}`);
+    if (refresh) parts.push(`refresh_token=${refresh}`);
+    return parts.join("; ");
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, params, signal } = options;
   const headers: Record<string, string> = { Accept: "application/json" };
 
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";
+  }
+
+  const serverCookies = await getServerCookieHeader();
+  if (serverCookies) {
+    headers.Cookie = serverCookies;
   }
 
   const init: RequestInit = {
@@ -79,6 +104,19 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (!parsed?.success) {
     throw new ApiError(response.status, "ERROR", "Unexpected response from server.");
+  }
+
+  // Paginated list endpoints return { data: T[], meta: {...} }. Adapt that to the
+  // frontend's PaginatedResponse<T> = { items, total, page, pageSize } so pages
+  // can consume `result.items`. Non-paginated responses (single objects or bare
+  // arrays such as project members) carry no `meta` and are returned as-is.
+  if (parsed.meta) {
+    return {
+      items: parsed.data,
+      total: parsed.meta.total,
+      page: parsed.meta.page,
+      pageSize: parsed.meta.pageSize,
+    } as T;
   }
 
   return parsed.data;
