@@ -7,6 +7,7 @@ import {
   type DocumentRow,
   type CreateDocumentData,
 } from "../repositories/document-repository.js";
+import { NotificationEventService } from "./notification-event-service.js";
 import { NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
 
@@ -72,9 +73,14 @@ async function assertProjectAccess(user: JWTPayload, projectId: string): Promise
 
 export class DocumentService {
   private readonly documentRepository: DocumentRepository;
+  private readonly notificationEvents: NotificationEventService;
 
-  constructor(documentRepository: DocumentRepository = new DocumentRepository()) {
+  constructor(
+    documentRepository: DocumentRepository = new DocumentRepository(),
+    notificationEvents: NotificationEventService = new NotificationEventService(),
+  ) {
     this.documentRepository = documentRepository;
+    this.notificationEvents = notificationEvents;
   }
 
   async create(user: JWTPayload, payload: CreateDocumentInput): Promise<DocumentResponse> {
@@ -91,6 +97,16 @@ export class DocumentService {
     if (payload.storageKey !== undefined) data.storageKey = payload.storageKey;
 
     const doc = await this.documentRepository.create(data);
+
+    await this.notificationEvents.documentUploaded({
+      companyId: user.companyId,
+      projectId: doc.projectId,
+      actorId: user.sub,
+      projectName: doc.project.name,
+      uploaderName: doc.uploadedBy.name,
+      documentName: doc.name,
+    });
+
     return toResponse(doc);
   }
 

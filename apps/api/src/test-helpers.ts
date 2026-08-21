@@ -90,6 +90,15 @@ export async function setupTestContext(role: CompanyRole = "ADMIN"): Promise<Tes
 }
 
 export async function cleanupTestContext(ctx: TestContext): Promise<void> {
+  // Inventory transactions, expenses, issues and documents reference users
+  // without a cascade (schema default Restrict), so remove them explicitly
+  // before cascading the company.
+  await prisma.inventoryTransaction.deleteMany({
+    where: { material: { companyId: ctx.company.id } },
+  });
+  await prisma.expense.deleteMany({ where: { project: { companyId: ctx.company.id } } });
+  await prisma.issue.deleteMany({ where: { project: { companyId: ctx.company.id } } });
+  await prisma.document.deleteMany({ where: { project: { companyId: ctx.company.id } } });
   await prisma.company.deleteMany({ where: { id: ctx.company.id } });
 }
 

@@ -1,5 +1,6 @@
 import { prisma } from "../providers/database.js";
 import { TeamRepository, type MemberRow } from "../repositories/team-repository.js";
+import { NotificationEventService } from "./notification-event-service.js";
 import { ConflictError, NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
 
@@ -28,9 +29,14 @@ function toResponse(member: MemberRow): MemberResponse {
 
 export class TeamService {
   private readonly teamRepository: TeamRepository;
+  private readonly notificationEvents: NotificationEventService;
 
-  constructor(teamRepository: TeamRepository = new TeamRepository()) {
+  constructor(
+    teamRepository: TeamRepository = new TeamRepository(),
+    notificationEvents: NotificationEventService = new NotificationEventService(),
+  ) {
     this.teamRepository = teamRepository;
+    this.notificationEvents = notificationEvents;
   }
 
   async listMembers(user: JWTPayload, projectId: string): Promise<MemberResponse[]> {
@@ -56,7 +62,7 @@ export class TeamService {
   ): Promise<MemberResponse> {
     const project = await prisma.project.findFirst({
       where: { id: projectId, companyId: user.companyId },
-      select: { id: true, managerId: true },
+      select: { id: true, name: true, managerId: true },
     });
 
     if (!project) {
@@ -78,6 +84,12 @@ export class TeamService {
     }
 
     const member = await this.teamRepository.addMember(projectId, userId);
+
+    await this.notificationEvents.projectAssigned({
+      userId,
+      projectName: project.name,
+    });
+
     return toResponse(member);
   }
 

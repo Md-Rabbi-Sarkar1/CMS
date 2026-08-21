@@ -14,6 +14,7 @@ import {
   type UpdateMaterialData,
   type InventoryTxData,
 } from "../repositories/material-repository.js";
+import { NotificationEventService } from "./notification-event-service.js";
 import { ConflictError, NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
 
@@ -78,9 +79,14 @@ function toTxResponse(tx: InventoryTxRow): InventoryTxResponse {
 
 export class MaterialService {
   private readonly materialRepository: MaterialRepository;
+  private readonly notificationEvents: NotificationEventService;
 
-  constructor(materialRepository: MaterialRepository = new MaterialRepository()) {
+  constructor(
+    materialRepository: MaterialRepository = new MaterialRepository(),
+    notificationEvents: NotificationEventService = new NotificationEventService(),
+  ) {
     this.materialRepository = materialRepository;
+    this.notificationEvents = notificationEvents;
   }
 
   async create(user: JWTPayload, payload: CreateMaterialInput): Promise<MaterialResponse> {
@@ -93,6 +99,9 @@ export class MaterialService {
     if (payload.reorderLevel !== undefined) data.reorderLevel = payload.reorderLevel;
 
     const material = await this.materialRepository.create(data);
+
+    await this.notifyIfLowStock(user.companyId, material);
+
     return toResponse(material);
   }
 
@@ -171,10 +180,26 @@ export class MaterialService {
     if (payload.projectId !== undefined) data.projectId = payload.projectId;
 
     const result = await this.materialRepository.recordTransaction(data, user.companyId);
+
+    await this.notifyIfLowStock(user.companyId, result.material);
+
     return {
       transaction: toTxResponse(result.tx),
       material: toResponse(result.material),
     };
+  }
+
+  private async notifyIfLowStock(companyId: string, material: MaterialRow): Promise<void> {
+    if (!isLowStock(material.currentStock, material.reorderLevel)) {
+      return;
+    }
+    await this.notificationEvents.lowStock({
+      companyId,
+      materialName: material.name,
+      unit: material.unit,
+      currentStock: material.currentStock.toString(),
+      reorderLevel: material.reorderLevel.toString(),
+    });
   }
 
   async listTransactions(user: JWTPayload, materialId: string): Promise<InventoryTxResponse[]> {

@@ -11,6 +11,7 @@ import {
   type CreateExpenseData,
   type ReviewExpenseData,
 } from "../repositories/expense-repository.js";
+import { NotificationEventService } from "./notification-event-service.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
 
@@ -69,9 +70,14 @@ function toResponse(expense: ExpenseRow): ExpenseResponse {
 
 export class ExpenseService {
   private readonly expenseRepository: ExpenseRepository;
+  private readonly notificationEvents: NotificationEventService;
 
-  constructor(expenseRepository: ExpenseRepository = new ExpenseRepository()) {
+  constructor(
+    expenseRepository: ExpenseRepository = new ExpenseRepository(),
+    notificationEvents: NotificationEventService = new NotificationEventService(),
+  ) {
     this.expenseRepository = expenseRepository;
+    this.notificationEvents = notificationEvents;
   }
 
   async create(user: JWTPayload, payload: CreateExpenseInput): Promise<ExpenseResponse> {
@@ -85,6 +91,17 @@ export class ExpenseService {
     };
 
     const expense = await this.expenseRepository.create(data);
+
+    await this.notificationEvents.expensePending({
+      companyId: user.companyId,
+      projectId: expense.projectId,
+      actorId: user.sub,
+      projectName: expense.project.name,
+      submitterName: expense.submittedBy.name,
+      category: expense.category,
+      amount: expense.amount.toString(),
+    });
+
     return toResponse(expense);
   }
 

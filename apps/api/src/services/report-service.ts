@@ -13,6 +13,7 @@ import {
   type UpdateReportData,
   type ReportListFilters,
 } from "../repositories/report-repository.js";
+import { NotificationEventService } from "./notification-event-service.js";
 import { NotFoundError, ForbiddenError } from "../utils/errors.js";
 import type { CompanyRole, JWTPayload } from "../types/auth.js";
 
@@ -107,9 +108,14 @@ function parseDate(value: string): Date {
 
 export class ReportService {
   private readonly reportRepository: ReportRepository;
+  private readonly notificationEvents: NotificationEventService;
 
-  constructor(reportRepository: ReportRepository = new ReportRepository()) {
+  constructor(
+    reportRepository: ReportRepository = new ReportRepository(),
+    notificationEvents: NotificationEventService = new NotificationEventService(),
+  ) {
     this.reportRepository = reportRepository;
+    this.notificationEvents = notificationEvents;
   }
 
   async create(user: JWTPayload, payload: CreateReportPayload): Promise<ReportResponse> {
@@ -147,6 +153,15 @@ export class ReportService {
     }
 
     const report = await this.reportRepository.create(data);
+
+    await this.notificationEvents.reportSubmitted({
+      companyId: user.companyId,
+      projectId: report.projectId,
+      actorId: user.sub,
+      projectName: report.project.name,
+      submitterName: report.submittedBy.name,
+    });
+
     return toReportResponse(report);
   }
 

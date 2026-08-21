@@ -10,6 +10,7 @@ import {
   type CreateTaskData,
   type UpdateTaskData,
 } from "../repositories/task-repository.js";
+import { NotificationEventService } from "./notification-event-service.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 import type { CompanyRole, JWTPayload } from "../types/auth.js";
 
@@ -93,9 +94,14 @@ async function assertProjectAccess(user: JWTPayload, projectId: string): Promise
 
 export class TaskService {
   private readonly taskRepository: TaskRepository;
+  private readonly notificationEvents: NotificationEventService;
 
-  constructor(taskRepository: TaskRepository = new TaskRepository()) {
+  constructor(
+    taskRepository: TaskRepository = new TaskRepository(),
+    notificationEvents: NotificationEventService = new NotificationEventService(),
+  ) {
     this.taskRepository = taskRepository;
+    this.notificationEvents = notificationEvents;
   }
 
   async create(
@@ -130,6 +136,16 @@ export class TaskService {
     if (payload.assigneeId !== undefined) data.assigneeId = payload.assigneeId;
 
     const task = await this.taskRepository.create(data);
+
+    if (task.assigneeId !== null) {
+      await this.notificationEvents.taskAssigned({
+        assigneeId: task.assigneeId,
+        taskTitle: task.title,
+        projectName: task.project.name,
+        dueDate: task.dueDate,
+      });
+    }
+
     return toResponse(task);
   }
 
@@ -234,6 +250,16 @@ export class TaskService {
     if (payload.assigneeId !== undefined) data.assigneeId = payload.assigneeId;
 
     const updated = await this.taskRepository.update(id, data);
+
+    if (payload.assigneeId !== undefined && updated.assigneeId !== null) {
+      await this.notificationEvents.taskAssigned({
+        assigneeId: updated.assigneeId,
+        taskTitle: updated.title,
+        projectName: updated.project.name,
+        dueDate: updated.dueDate,
+      });
+    }
+
     return toResponse(updated);
   }
 

@@ -62,6 +62,16 @@ export class NotificationRepository {
     return this.client.notification.create({ data: createData });
   }
 
+  findUnreadByTypeAndTitle(
+    userId: string,
+    type: NotificationType,
+    title: string,
+  ): Promise<NotificationRow | null> {
+    return this.client.notification.findFirst({
+      where: { userId, type, title, readAt: null },
+    });
+  }
+
   markAsRead(id: string): Promise<NotificationRow> {
     return this.client.notification.update({
       where: { id },

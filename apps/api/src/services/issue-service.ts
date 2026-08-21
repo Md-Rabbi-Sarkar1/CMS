@@ -9,6 +9,7 @@ import {
   type CreateIssueData,
   type UpdateIssueData,
 } from "../repositories/issue-repository.js";
+import { NotificationEventService } from "./notification-event-service.js";
 import { NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
 
@@ -86,9 +87,14 @@ async function assertProjectAccess(user: JWTPayload, projectId: string): Promise
 
 export class IssueService {
   private readonly issueRepository: IssueRepository;
+  private readonly notificationEvents: NotificationEventService;
 
-  constructor(issueRepository: IssueRepository = new IssueRepository()) {
+  constructor(
+    issueRepository: IssueRepository = new IssueRepository(),
+    notificationEvents: NotificationEventService = new NotificationEventService(),
+  ) {
     this.issueRepository = issueRepository;
+    this.notificationEvents = notificationEvents;
   }
 
   async create(user: JWTPayload, payload: CreateIssueInput): Promise<IssueResponse> {
@@ -115,6 +121,17 @@ export class IssueService {
     if (payload.priority !== undefined) data.priority = payload.priority;
 
     const issue = await this.issueRepository.create(data);
+
+    await this.notificationEvents.issueCreated({
+      companyId: user.companyId,
+      projectId: issue.projectId,
+      actorId: user.sub,
+      projectName: issue.project.name,
+      reporterName: issue.reporter.name,
+      issueTitle: issue.title,
+      assigneeId: issue.assigneeId,
+    });
+
     return toResponse(issue);
   }
 
