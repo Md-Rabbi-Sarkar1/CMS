@@ -12,6 +12,7 @@ import {
   type ReviewExpenseData,
 } from "../repositories/expense-repository.js";
 import { NotificationEventService } from "./notification-event-service.js";
+import { prisma } from "../providers/database.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
 
@@ -81,6 +82,15 @@ export class ExpenseService {
   }
 
   async create(user: JWTPayload, payload: CreateExpenseInput): Promise<ExpenseResponse> {
+    const project = await prisma.project.findUnique({
+      where: { id: payload.projectId },
+      select: { companyId: true },
+    });
+
+    if (project?.companyId !== user.companyId) {
+      throw new NotFoundError("Project not found");
+    }
+
     const data: CreateExpenseData = {
       projectId: payload.projectId,
       submittedById: user.sub,
