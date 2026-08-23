@@ -1,4 +1,5 @@
 import type { CreateIssueInput, UpdateIssueInput } from "@construction-ops/validation";
+import { ISSUE_STATUS_TRANSITIONS } from "@construction-ops/validation";
 import type { IssueStatus } from "@construction-ops/database";
 
 import { prisma } from "../providers/database.js";
@@ -10,7 +11,7 @@ import {
   type UpdateIssueData,
 } from "../repositories/issue-repository.js";
 import { NotificationEventService } from "./notification-event-service.js";
-import { NotFoundError } from "../utils/errors.js";
+import { ConflictError, NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
 
 export interface IssueResponse {
@@ -184,6 +185,15 @@ export class IssueService {
       });
       if (!assignee) {
         throw new NotFoundError("Assignee not found");
+      }
+    }
+
+    if (payload.status !== undefined && payload.status !== issue.status) {
+      const allowed = ISSUE_STATUS_TRANSITIONS[issue.status] ?? [];
+      if (!allowed.includes(payload.status)) {
+        throw new ConflictError(
+          `Invalid status transition from ${issue.status} to ${payload.status}`,
+        );
       }
     }
 

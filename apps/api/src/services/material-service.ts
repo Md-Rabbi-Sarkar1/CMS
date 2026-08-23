@@ -15,6 +15,7 @@ import {
   type InventoryTxData,
 } from "../repositories/material-repository.js";
 import { NotificationEventService } from "./notification-event-service.js";
+import { prisma } from "../providers/database.js";
 import { ConflictError, NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
 
@@ -153,6 +154,9 @@ export class MaterialService {
     if (!material) {
       throw new NotFoundError("Material not found");
     }
+    if (material._count.transactions > 0) {
+      throw new ConflictError("Cannot delete a material with inventory transactions");
+    }
     await this.materialRepository.delete(id);
   }
 
@@ -168,6 +172,16 @@ export class MaterialService {
 
     if (payload.type === "USAGE" && payload.quantity > Number(material.currentStock)) {
       throw new ConflictError("Insufficient stock for this transaction");
+    }
+
+    if (payload.projectId !== undefined) {
+      const project = await prisma.project.findFirst({
+        where: { id: payload.projectId, companyId: user.companyId },
+        select: { id: true },
+      });
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
     }
 
     const data: InventoryTxData = {
