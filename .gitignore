@@ -39,3 +39,7 @@ packages/database/prisma/migrations/**/migration_lock.toml
 # Misc
 .turbo/
 .vercel/
+
+# Playwright
+apps/e2e/test-results/
+apps/e2e/playwright-report/

@@ -188,6 +188,8 @@ export class IssueService {
       }
     }
 
+    await assertProjectAccess(user, issue.projectId);
+
     if (payload.status !== undefined && payload.status !== issue.status) {
       const allowed = ISSUE_STATUS_TRANSITIONS[issue.status] ?? [];
       if (!allowed.includes(payload.status)) {
@@ -213,6 +215,9 @@ export class IssueService {
     if (!issue) {
       throw new NotFoundError("Issue not found");
     }
+
+    await assertProjectAccess(user, issue.projectId);
+
     await this.issueRepository.delete(id);
   }
 }

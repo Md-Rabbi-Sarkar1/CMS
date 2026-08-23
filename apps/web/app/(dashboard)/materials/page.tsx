@@ -82,9 +82,7 @@ async function RecentTransactions({ materialIds }: { materialIds: string[] }) {
   try {
     const all = await Promise.all(
       materialIds.slice(0, 10).map((id) =>
-        api
-          .get<{ items: InventoryTransaction[] }>(`/materials/${id}/transactions`, { pageSize: 5 })
-          .then((r) => r.items),
+        api.get<InventoryTransaction[]>(`/materials/${id}/transactions`),
       ),
     );
     transactions = all.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 10);
