@@ -1,0 +1,67 @@
+# Phase 21 — CI (docs/architecture.md §11–§13)
+# Runs lint, typecheck, and the full test suite (including the mandatory
+# tenant-isolation tests) on every pull request and on pushes to main.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: construction_ops_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d construction_ops_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # CI-only test database on the PostgreSQL service container.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/construction_ops_ci?schema=public
+      # Clearly test-only secrets (never real development/production values).
+      JWT_ACCESS_SECRET: ci-test-only-access-secret-not-for-production
+      JWT_REFRESH_SECRET: ci-test-only-refresh-secret-not-for-production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable pnpm (pinned via packageManager field)
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm build:packages
+
+      - name: Apply database migrations
+        run: pnpm --filter @construction-ops/database exec prisma migrate deploy
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test (full suite incl. tenant isolation)
+        run: pnpm test
