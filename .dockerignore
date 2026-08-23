@@ -1,0 +1,26 @@
+# Version control
+.git
+
+# Dependencies (installed inside the image)
+**/node_modules
+.pnpm-store
+
+# Build outputs (built inside the image)
+**/dist
+**/.next
+**/build
+**/out
+**/*.tsbuildinfo
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+**/*.log
+
+# Test artifacts
+**/coverage
+apps/e2e/test-results
+apps/e2e/playwright-report

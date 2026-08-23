@@ -14,7 +14,14 @@ export class ApiError extends Error {
   }
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+// Server-side fetches (React Server Components) can override the public API
+// URL via API_INTERNAL_URL so container-to-container traffic uses the compose
+// service hostname. NEXT_PUBLIC_API_URL is inlined into the browser bundle at
+// build time and must stay a browser-reachable address.
+const API_URL =
+  (typeof window === "undefined" ? process.env.API_INTERNAL_URL : undefined) ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:4000/api/v1";
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>): string {
   const base = API_URL.endsWith("/api/v1") ? API_URL : `${API_URL}/api/v1`;

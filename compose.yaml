@@ -1,0 +1,76 @@
+# Phase 20 — production-like local container stack.
+#
+#   docker compose up --build
+#
+# web → api → postgres. Credentials below are DEVELOPMENT-ONLY defaults;
+# override them via the environment (e.g. a gitignored .env) for any real
+# deployment.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: construction_ops
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      # Host 5433 to avoid clashing with a local dev PostgreSQL on 5432.
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d construction_ops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: pnpm --filter @construction-ops/database exec prisma migrate deploy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/construction_ops?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/construction_ops?schema=public
+      WEB_URL: ${WEB_URL:-http://localhost:3000}
+      # Development-only secrets; MUST be overridden outside local use.
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-docker-dev-only-access-secret-do-not-use-in-prod}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-docker-dev-only-refresh-secret-do-not-use-in-prod}
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Inlined into the browser bundle at build time; must be the address
+        # a browser uses to reach the API (published host port).
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000/api/v1}
+    environment:
+      # Server Components fetch API-side through the internal network.
+      API_INTERNAL_URL: http://api:4000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
