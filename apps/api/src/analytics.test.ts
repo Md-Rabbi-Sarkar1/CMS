@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { agent as supertestAgent } from "supertest";
 
 import { app } from "./app.js";
-import { prisma } from "./providers/database.js";
+import { connectDatabase, prisma } from "./providers/database.js";
 import {
   cleanupTestContext,
   setupTestContext,
@@ -183,9 +183,19 @@ describe("Analytics — combined endpoint and auth", () => {
 });
 
 describe("Health endpoint", () => {
-  it("returns ok without authentication", async () => {
+  it("reports 503 unavailable without authentication when the database is not ready", async () => {
+    const res = await supertestAgent(app).get("/api/v1/health");
+    expect(res.status).toBe(503);
+    expect(successBody<{ status: string; database: string }>(res).data.status).toBe("unavailable");
+    expect(successBody<{ status: string; database: string }>(res).data.database).toBe("down");
+  });
+
+  it("reports ok once the database connection has succeeded", async () => {
+    await connectDatabase();
+
     const res = await supertestAgent(app).get("/api/v1/health");
     expect(res.status).toBe(200);
-    expect(successBody<{ status: string }>(res).data.status).toBe("ok");
+    expect(successBody<{ status: string; database: string }>(res).data.status).toBe("ok");
+    expect(successBody<{ status: string; database: string }>(res).data.database).toBe("up");
   });
 });

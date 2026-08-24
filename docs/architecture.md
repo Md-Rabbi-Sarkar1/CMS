@@ -896,7 +896,7 @@ Product requirements and finalized architecture (this document).
 | 19 | Automated testing expansion | E2E, coverage targets |
 | 20 | Docker | Compose for api + web + postgres |
 | 21 | CI/CD | GitHub Actions |
-| 22 | Production deployment | Cloud hosting, monitoring |
+| 22 | Production deployment | Cloud hosting, monitoring (see `docs/DEPLOYMENT.md`) |
 
 ---
 

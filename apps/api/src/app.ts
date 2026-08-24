@@ -4,6 +4,8 @@ import express, { type Express } from "express";
 
 import { env } from "./config/env.js";
 import { errorHandler } from "./middleware/error-handler.js";
+import { authRateLimit, globalRateLimit } from "./middleware/rate-limit.js";
+import { securityHeaders } from "./middleware/security-headers.js";
 import { analyticsRouter } from "./routes/analytics.js";
 import { authRouter } from "./routes/auth.js";
 import { companyRouter } from "./routes/company.js";
@@ -22,13 +24,15 @@ import { NotFoundError } from "./utils/errors.js";
 export const app: Express = express();
 
 app.disable("x-powered-by");
+app.use(securityHeaders);
 app.use(cors({ origin: env.WEB_URL, credentials: true }));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(globalRateLimit);
 
 app.use("/api/v1/health", healthRouter);
-app.use("/api/v1/auth", authRouter);
+app.use("/api/v1/auth", authRateLimit, authRouter);
 app.use("/api/v1/company", companyRouter);
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/projects", projectRouter);
