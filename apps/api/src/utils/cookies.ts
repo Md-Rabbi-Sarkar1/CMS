@@ -17,12 +17,14 @@ export function setAuthCookies(res: Response, accessToken: string, refreshToken:
     httpOnly: true,
     secure: isProduction,
     sameSite,
+    ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {}),
     maxAge: ACCESS_TOKEN_MAX_AGE_MS,
   });
   res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, {
     httpOnly: true,
     secure: isProduction,
     sameSite,
+    ...(env.COOKIE_DOMAIN ? { domain: env.COOKIE_DOMAIN } : {}),
     maxAge: REFRESH_TOKEN_MAX_AGE_MS,
   });
 }

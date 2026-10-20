@@ -33,6 +33,9 @@ services:
       # CORS origin: the public web origin, e.g. https://construction-ops-web.onrender.com
       - key: WEB_URL
         sync: false
+      # Shared cookie scope for the Render web and API subdomains.
+      - key: COOKIE_DOMAIN
+        value: .onrender.com
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
