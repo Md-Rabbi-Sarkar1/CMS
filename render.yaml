@@ -12,7 +12,6 @@ services:
     plan: free
     runtime: node
     buildCommand: >-
-      corepack enable &&
       pnpm install --frozen-lockfile &&
       pnpm -w build:packages &&
       pnpm --filter @construction-ops/database exec prisma migrate deploy &&
@@ -44,7 +43,6 @@ services:
     plan: free
     runtime: node
     buildCommand: >-
-      corepack enable &&
       pnpm install --frozen-lockfile &&
       pnpm --filter @construction-ops/shared --filter @construction-ops/validation build &&
       pnpm --filter @construction-ops/web build
