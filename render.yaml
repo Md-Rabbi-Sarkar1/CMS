@@ -12,7 +12,7 @@ services:
     plan: free
     runtime: node
     buildCommand: >-
-      pnpm install --frozen-lockfile &&
+      pnpm install --frozen-lockfile --prod=false &&
       pnpm -w build:packages &&
       pnpm --filter @construction-ops/database exec prisma migrate deploy &&
       pnpm --filter @construction-ops/database exec prisma db seed &&
@@ -43,7 +43,7 @@ services:
     plan: free
     runtime: node
     buildCommand: >-
-      pnpm install --frozen-lockfile &&
+      pnpm install --frozen-lockfile --prod=false &&
       pnpm --filter @construction-ops/shared --filter @construction-ops/validation build &&
       pnpm --filter @construction-ops/web build
     startCommand: pnpm --filter @construction-ops/web start
