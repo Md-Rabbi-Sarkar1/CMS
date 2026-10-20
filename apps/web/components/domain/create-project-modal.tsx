@@ -7,10 +7,14 @@ import { api, ApiError } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import type { User } from "@/lib/types";
 
-const STATUSES = ["PLANNING", "ACTIVE", "ON_HOLD", "COMPLETED", "CANCELLED"];
-
-export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CreateProjectModal({
+  open,
+  onClose,
+  user,
+  managers,
+}: { open: boolean; onClose: () => void; user: User; managers: User[] }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -19,7 +23,7 @@ export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: 
   const [budget, setBudget] = useState("");
   const [startDate, setStartDate] = useState("");
   const [expectedEndDate, setExpectedEndDate] = useState("");
-  const [status, setStatus] = useState("PLANNING");
+  const [managerId, setManagerId] = useState(user.role === "PROJECT_MANAGER" ? user.id : "");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +35,7 @@ export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: 
     setBudget("");
     setStartDate("");
     setExpectedEndDate("");
-    setStatus("PLANNING");
+    setManagerId(user.role === "PROJECT_MANAGER" ? user.id : "");
     setError(null);
   }
 
@@ -48,6 +52,7 @@ export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: 
         budget: budget ? Number(budget) : undefined,
         startDate: startDate || undefined,
         expectedEndDate: expectedEndDate || undefined,
+        managerId: managerId || undefined,
       });
       reset();
       onClose();
@@ -107,11 +112,12 @@ export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: 
           <Field label="Budget" htmlFor="budget">
             <Input id="budget" type="number" min="0" step="0.01" value={budget} onChange={(e) => { setBudget(e.target.value); }} />
           </Field>
-          <Field label="Status" htmlFor="status">
-            <Select id="status" value={status} onChange={(e) => { setStatus(e.target.value); }}>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s.replace(/_/g, " ")}
+          <Field label="Project manager" htmlFor="managerId">
+            <Select id="managerId" value={managerId} onChange={(e) => { setManagerId(e.target.value); }}>
+              <option value="">Unassigned</option>
+              {managers.map((manager) => (
+                <option key={manager.id} value={manager.id}>
+                  {manager.name} ({manager.email})
                 </option>
               ))}
             </Select>

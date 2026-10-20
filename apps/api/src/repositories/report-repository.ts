@@ -38,6 +38,7 @@ export interface ReportListFilters {
   companyId: string;
   projectId?: string;
   submittedById?: string;
+  projectIds?: string[];
   reportDateFrom?: Date;
   reportDateTo?: Date;
 }
@@ -139,6 +140,8 @@ export class ReportRepository {
 
     if (projectId !== undefined) {
       where.projectId = projectId;
+    } else if (filters.projectIds !== undefined) {
+      where.projectId = { in: filters.projectIds };
     }
     if (submittedById !== undefined) {
       where.submittedById = submittedById;

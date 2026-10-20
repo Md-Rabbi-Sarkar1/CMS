@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { can } from "@/lib/permissions";
 import type { User } from "@/lib/types";
 
-export function CreateProjectButton({ user }: { user: User }) {
+export function CreateProjectButton({ user, managers = [] }: { user: User; managers?: User[] }) {
   const [open, setOpen] = useState(false);
 
   if (!can("createProject", user.role)) return null;
@@ -15,7 +15,7 @@ export function CreateProjectButton({ user }: { user: User }) {
   return (
     <>
       <Button onClick={() => { setOpen(true); }}>New project</Button>
-      <CreateProjectModal open={open} onClose={() => { setOpen(false); }} />
+      <CreateProjectModal open={open} onClose={() => { setOpen(false); }} user={user} managers={managers} />
     </>
   );
 }

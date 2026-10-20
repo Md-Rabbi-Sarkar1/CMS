@@ -7,6 +7,8 @@ export interface ExpenseListFilters {
   page: number;
   pageSize: number;
   projectId?: string | undefined;
+  projectIds?: string[] | undefined;
+  submittedById?: string | undefined;
   status?: ExpenseStatus | undefined;
   category?: ExpenseCategory | undefined;
 }
@@ -53,6 +55,8 @@ export class ExpenseRepository {
   async list(filters: ExpenseListFilters): Promise<ExpenseListResult> {
     const where: Prisma.ExpenseWhereInput = { project: { companyId: filters.companyId } };
     if (filters.projectId !== undefined) where.projectId = filters.projectId;
+    else if (filters.projectIds !== undefined) where.projectId = { in: filters.projectIds };
+    if (filters.submittedById !== undefined) where.submittedById = filters.submittedById;
     if (filters.status !== undefined) where.status = filters.status;
     if (filters.category !== undefined) where.category = filters.category;
 

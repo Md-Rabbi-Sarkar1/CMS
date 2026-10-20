@@ -82,13 +82,15 @@ export class ProjectService {
       throw new ForbiddenError("You are not allowed to create projects");
     }
 
-    if (payload.managerId !== undefined) {
+    const managerId = payload.managerId ?? (user.role === "PROJECT_MANAGER" ? user.sub : undefined);
+
+    if (managerId !== undefined) {
       const manager = await prisma.user.findFirst({
-        where: { id: payload.managerId, companyId: user.companyId },
+        where: { id: managerId, companyId: user.companyId, role: "PROJECT_MANAGER" },
         select: { id: true },
       });
       if (!manager) {
-        throw new NotFoundError("Manager not found");
+        throw new NotFoundError("Project manager not found");
       }
     }
 
@@ -102,9 +104,12 @@ export class ProjectService {
     if (payload.startDate !== undefined) data.startDate = parseDate(payload.startDate);
     if (payload.expectedEndDate !== undefined) data.expectedEndDate = parseDate(payload.expectedEndDate);
     if (payload.budget !== undefined) data.budget = payload.budget;
-    if (payload.managerId !== undefined) data.managerId = payload.managerId;
+    if (managerId !== undefined) data.managerId = managerId;
 
     const project = await this.projectRepository.create(data);
+    if (managerId !== undefined) {
+      await prisma.projectMember.create({ data: { projectId: project.id, userId: managerId } });
+    }
     return toResponse(project);
   }
 
@@ -122,7 +127,7 @@ export class ProjectService {
 
     // Non-admins only see projects they are members of (or manage).
     if (user.role !== "ADMIN") {
-      return this.listForMember(user);
+      return this.listForMember(user, query);
     }
 
     const result = await this.projectRepository.list(filters);
@@ -134,14 +139,34 @@ export class ProjectService {
     };
   }
 
-  private async listForMember(user: JWTPayload): Promise<ProjectListResponse> {
+  private async listForMember(
+    user: JWTPayload,
+    query: { page: number; pageSize: number; status?: ProjectStatus | undefined; managerId?: string | undefined },
+  ): Promise<ProjectListResponse> {
+    const where = {
+      companyId: user.companyId,
+      ...(query.status === undefined ? {} : { status: query.status }),
+      ...(query.managerId === undefined ? {} : { managerId: query.managerId }),
+      OR: [{ managerId: user.sub }, { members: { some: { userId: user.sub } } }],
+    };
     const memberships = await prisma.projectMember.findMany({
-      where: { userId: user.sub },
+      where: { project: where },
       select: { project: { include: { manager: { select: { id: true, name: true, email: true } }, _count: { select: { tasks: true, members: true } } } } },
+      orderBy: { project: { createdAt: "desc" } },
     });
 
-    const items = memberships.map((m) => toResponse(m.project));
-    return { items, total: items.length, page: 1, pageSize: items.length };
+    const managedOnly = await prisma.project.findMany({
+      where: { ...where, managerId: user.sub, members: { none: { userId: user.sub } } },
+      include: { manager: { select: { id: true, name: true, email: true } }, _count: { select: { tasks: true, members: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+    const seen = new Set(memberships.map((membership) => membership.project.id));
+    const items = [
+      ...memberships.map((membership) => toResponse(membership.project)),
+      ...managedOnly.filter((project) => !seen.has(project.id)).map(toResponse),
+    ];
+    const start = (query.page - 1) * query.pageSize;
+    return { items: items.slice(start, start + query.pageSize), total: items.length, page: query.page, pageSize: query.pageSize };
   }
 
   async getById(user: JWTPayload, id: string): Promise<ProjectResponse> {
@@ -178,11 +203,11 @@ export class ProjectService {
 
     if (payload.managerId !== undefined && payload.managerId !== null) {
       const manager = await prisma.user.findFirst({
-        where: { id: payload.managerId, companyId: user.companyId },
+        where: { id: payload.managerId, companyId: user.companyId, role: "PROJECT_MANAGER" },
         select: { id: true },
       });
       if (!manager) {
-        throw new NotFoundError("Manager not found");
+        throw new NotFoundError("Project manager not found");
       }
     }
 
@@ -200,6 +225,13 @@ export class ProjectService {
     if (payload.managerId !== undefined) data.managerId = payload.managerId;
 
     const updated = await this.projectRepository.update(id, data);
+    if (payload.managerId !== undefined && payload.managerId !== null) {
+      await prisma.projectMember.upsert({
+        where: { projectId_userId: { projectId: id, userId: payload.managerId } },
+        create: { projectId: id, userId: payload.managerId },
+        update: {},
+      });
+    }
     return toResponse(updated);
   }
 

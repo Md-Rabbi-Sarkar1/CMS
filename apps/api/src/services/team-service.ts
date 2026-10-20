@@ -1,7 +1,7 @@
 import { prisma } from "../providers/database.js";
 import { TeamRepository, type MemberRow } from "../repositories/team-repository.js";
 import { NotificationEventService } from "./notification-event-service.js";
-import { ConflictError, NotFoundError } from "../utils/errors.js";
+import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
 
 export interface MemberResponse {
@@ -69,6 +69,8 @@ export class TeamService {
       throw new NotFoundError("Project not found");
     }
 
+    await this.assertAccess(user, project.id, project.managerId);
+
     const target = await prisma.user.findFirst({
       where: { id: userId, companyId: user.companyId },
       select: { id: true },
@@ -106,6 +108,11 @@ export class TeamService {
     const existing = await this.teamRepository.findMembership(projectId, userId);
     if (!existing) {
       throw new NotFoundError("Membership not found");
+    }
+
+    await this.assertAccess(user, project.id, project.managerId);
+    if (project.managerId === userId) {
+      throw new ForbiddenError("The project manager must be changed before removal");
     }
 
     await this.teamRepository.removeMember(projectId, userId);

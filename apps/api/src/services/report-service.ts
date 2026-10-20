@@ -16,6 +16,7 @@ import {
 import { NotificationEventService } from "./notification-event-service.js";
 import { NotFoundError, ForbiddenError } from "../utils/errors.js";
 import type { CompanyRole, JWTPayload } from "../types/auth.js";
+import { accessibleProjectIds, assertProjectAccess } from "./project-access.js";
 
 export interface ReportWorkerResponse {
   id: string;
@@ -131,6 +132,7 @@ export class ReportService {
     if (project?.companyId !== user.companyId) {
       throw new NotFoundError("Project not found");
     }
+    await assertProjectAccess(user, payload.projectId);
 
     const data: CreateReportData = {
       projectId: payload.projectId,
@@ -173,10 +175,16 @@ export class ReportService {
     };
 
     if (query.projectId !== undefined) {
+      await assertProjectAccess(user, query.projectId);
       filters.projectId = query.projectId;
+    } else if (user.role !== "ADMIN") {
+      filters.projectIds = await accessibleProjectIds(user);
     }
     if (query.submittedById !== undefined) {
       filters.submittedById = query.submittedById;
+    }
+    if (user.role === "ENGINEER" || user.role === "WORKER") {
+      filters.submittedById = user.sub;
     }
     if (query.reportDateFrom !== undefined) {
       filters.reportDateFrom = parseDate(query.reportDateFrom);
@@ -201,6 +209,8 @@ export class ReportService {
     if (!report) {
       throw new NotFoundError("Daily work report not found");
     }
+
+    await assertProjectAccess(user, report.projectId);
 
     return toReportResponse(report);
   }

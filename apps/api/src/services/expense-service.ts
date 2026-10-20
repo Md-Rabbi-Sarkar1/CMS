@@ -15,6 +15,7 @@ import { NotificationEventService } from "./notification-event-service.js";
 import { prisma } from "../providers/database.js";
 import { ConflictError, ForbiddenError, NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
+import { accessibleProjectIds, assertProjectAccess } from "./project-access.js";
 
 export interface ExpenseResponse {
   id: string;
@@ -90,6 +91,7 @@ export class ExpenseService {
     if (project?.companyId !== user.companyId) {
       throw new NotFoundError("Project not found");
     }
+    await assertProjectAccess(user, payload.projectId);
 
     const data: CreateExpenseData = {
       projectId: payload.projectId,
@@ -130,7 +132,12 @@ export class ExpenseService {
       page: query.page,
       pageSize: query.pageSize,
     };
-    if (query.projectId !== undefined) filters.projectId = query.projectId;
+    if (query.projectId !== undefined) {
+      await assertProjectAccess(user, query.projectId);
+      filters.projectId = query.projectId;
+    }
+    else if (user.role !== "ADMIN") filters.projectIds = await accessibleProjectIds(user);
+    if (user.role === "ENGINEER" || user.role === "WORKER") filters.submittedById = user.sub;
     if (query.status !== undefined) filters.status = query.status;
     if (query.category !== undefined) filters.category = query.category;
 
@@ -146,6 +153,10 @@ export class ExpenseService {
   async getById(user: JWTPayload, id: string): Promise<ExpenseResponse> {
     const expense = await this.expenseRepository.findOwnedById(id, user.companyId);
     if (!expense) {
+      throw new NotFoundError("Expense not found");
+    }
+    await assertProjectAccess(user, expense.projectId);
+    if (user.role !== "ADMIN" && user.role !== "PROJECT_MANAGER" && expense.submittedById !== user.sub) {
       throw new NotFoundError("Expense not found");
     }
     return toResponse(expense);

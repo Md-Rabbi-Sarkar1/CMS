@@ -6,7 +6,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { EmptyState, ErrorState, PageHeader } from "@/components/ui/feedback";
 import { getCurrentUser } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api-client";
-import type { PaginatedResponse, Project } from "@/lib/types";
+import type { PaginatedResponse, Project, User } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +15,16 @@ export default async function ProjectsPage() {
   if (!user) return null;
 
   let projects: Project[] = [];
+  let managers: User[] = [];
   let error: string | null = null;
 
   try {
     const result = await api.get<PaginatedResponse<Project>>("/projects", { pageSize: 100 });
     projects = result.items;
+    if (user.role === "ADMIN") {
+      const users = await api.get<PaginatedResponse<User>>("/users", { role: "PROJECT_MANAGER", pageSize: 100 });
+      managers = users.items;
+    }
   } catch (err) {
     error = err instanceof ApiError ? err.message : "Failed to load projects.";
   }
@@ -29,7 +34,7 @@ export default async function ProjectsPage() {
       <PageHeader
         title="Projects"
         description="Manage your construction projects."
-        action={<CreateProjectButton user={user} />}
+        action={<CreateProjectButton user={user} managers={managers} />}
       />
 
       {error ? (

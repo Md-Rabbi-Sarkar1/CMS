@@ -17,7 +17,9 @@ services:
     startCommand: node apps/api/dist/index.js
     # Migrations run before every deploy; `migrate deploy` is the
     # production-safe Prisma command (never `migrate dev` or `db push`).
-    preDeployCommand: pnpm --filter @construction-ops/database exec prisma migrate deploy
+    preDeployCommand: >-
+      pnpm --filter @construction-ops/database exec prisma migrate deploy &&
+      pnpm --filter @construction-ops/database exec prisma db seed
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
@@ -52,6 +54,8 @@ services:
       # (e.g. https://construction-ops-api.onrender.com/api/v1).
       - key: NEXT_PUBLIC_API_URL
         sync: false
+      - key: NEXT_PUBLIC_ENABLE_DEMO_LOGIN
+        value: "true"
 
 databases:
   - name: construction-ops-db

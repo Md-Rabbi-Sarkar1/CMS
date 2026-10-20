@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "NODE_ENV=production next build",
+    "build": "node -e \"process.env.NODE_ENV='production'; require('child_process').execSync('next build', { stdio: 'inherit' })\"",
     "start": "next start --port 3000",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint app/",

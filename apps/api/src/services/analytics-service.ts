@@ -1,5 +1,6 @@
 import { prisma } from "../providers/database.js";
 import type { JWTPayload } from "../types/auth.js";
+import { accessibleProjectWhere } from "./project-access.js";
 
 export interface DashboardStats {
   projects: {
@@ -48,26 +49,27 @@ export interface AnalyticsResult {
 export class AnalyticsService {
   async getDashboard(user: JWTPayload): Promise<DashboardStats> {
     const companyId = user.companyId;
+    const projectWhere = accessibleProjectWhere(user);
 
     const [projectCounts, taskCounts, issueCounts, expenseAgg, materialCounts] = await Promise.all([
       prisma.project.groupBy({
         by: ["status"],
-        where: { companyId },
+        where: projectWhere,
         _count: { _all: true },
       }),
       prisma.task.groupBy({
         by: ["status"],
-        where: { project: { companyId } },
+        where: { project: projectWhere },
         _count: { _all: true },
       }),
       prisma.issue.groupBy({
         by: ["status"],
-        where: { project: { companyId } },
+        where: { project: projectWhere },
         _count: { _all: true },
       }),
       prisma.expense.groupBy({
         by: ["status"],
-        where: { project: { companyId } },
+        where: { project: projectWhere },
         _sum: { amount: true },
         _count: { _all: true },
       }),
@@ -132,7 +134,7 @@ export class AnalyticsService {
 
   async getProjectProgress(user: JWTPayload): Promise<ProjectProgressItem[]> {
     const projects = await prisma.project.findMany({
-      where: { companyId: user.companyId },
+      where: accessibleProjectWhere(user),
       select: {
         id: true,
         name: true,

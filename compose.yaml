@@ -28,7 +28,9 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    command: pnpm --filter @construction-ops/database exec prisma migrate deploy
+    command: >
+      bash -c "pnpm --filter @construction-ops/database exec prisma migrate deploy &&
+               pnpm --filter @construction-ops/database exec prisma db seed"
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/construction_ops?schema=public
     depends_on:

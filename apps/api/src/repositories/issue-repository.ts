@@ -7,6 +7,7 @@ export interface IssueListFilters {
   page: number;
   pageSize: number;
   projectId?: string | undefined;
+  projectIds?: string[] | undefined;
   status?: IssueStatus | undefined;
   assigneeId?: string | undefined;
 }
@@ -56,6 +57,7 @@ export class IssueRepository {
   async list(filters: IssueListFilters): Promise<IssueListResult> {
     const where: Prisma.IssueWhereInput = { project: { companyId: filters.companyId } };
     if (filters.projectId !== undefined) where.projectId = filters.projectId;
+    else if (filters.projectIds !== undefined) where.projectId = { in: filters.projectIds };
     if (filters.status !== undefined) where.status = filters.status;
     if (filters.assigneeId !== undefined) where.assigneeId = filters.assigneeId;
 
@@ -105,6 +107,8 @@ export class IssueRepository {
     }
     if (data.status === "RESOLVED") {
       updateData.resolvedAt = new Date();
+    } else if (data.status !== undefined) {
+      updateData.resolvedAt = null;
     }
 
     return this.client.issue.update({ where: { id }, data: updateData, include: issueInclude });

@@ -118,6 +118,13 @@ describe("Projects — create", () => {
       await cleanupTestContext(other);
     }
   });
+
+  it("rejects assigning a non-project-manager user", async () => {
+    const res = await admin
+      .post("/api/v1/projects")
+      .send({ name: "Engineer manager", managerId: member.id });
+    expect(res.status).toBe(404);
+  });
 });
 
 describe("Projects — list", () => {
@@ -144,16 +151,13 @@ describe("Projects — list", () => {
     expect(successBody<ProjectData[]>(outsiderRes).data).toHaveLength(0);
   });
 
-  it("lists membership projects for the project manager (managed-only projects excluded)", async () => {
-    // NOTE: listForMember only returns explicit memberships; a project whose
-    // managerId is the PM but which the PM is not a member of is omitted from
-    // the list even though GET /projects/:id grants the manager access.
+  it("lists both membership and manager-owned projects for the project manager", async () => {
     const res = await pmAgent.get("/api/v1/projects");
     expect(res.status).toBe(200);
     const ids = successBody<ProjectData[]>(res).data.map((p) => p.id);
     expect(ids).toContain(mainProject);
     expect(ids).not.toContain(planningProject);
-    expect(ids).not.toContain(pmOwnedProject);
+    expect(ids).toContain(pmOwnedProject);
   });
 });
 

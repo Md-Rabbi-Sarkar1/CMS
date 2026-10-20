@@ -9,6 +9,13 @@ import { login } from "@/lib/auth";
 import { ApiError } from "@/lib/api-client";
 import { Spinner } from "@/components/ui/feedback";
 
+const DEMO_LOGINS = [
+  { label: "Login as Admin", email: "admin@demo.local", password: "Password123!" },
+  { label: "Login as Project Manager", email: "mdrabbisarkar70@gmail.com", password: "11111111" },
+  { label: "Login as Engineer", email: "mdrabbisarkar71@gmail.com", password: "11111111" },
+  { label: "Login as Worker", email: "mdrabbisarkar72@gmail.com", password: "11111111" },
+] as const;
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
@@ -29,6 +36,20 @@ function LoginForm() {
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDemoLogin(demoEmail: string, demoPassword: string) {
+    setError(null);
+    setLoading(true);
+    try {
+      await login(demoEmail, demoPassword);
+      router.replace(redirect);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Demo login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -75,6 +96,26 @@ function LoginForm() {
           <Button type="submit" className="w-full" loading={loading}>
             Sign in
           </Button>
+          {process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGIN === "true" ? (
+            <div className="border-t border-slate-200 pt-4">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Development quick login</p>
+              <div className="grid grid-cols-1 gap-2">
+                {DEMO_LOGINS.map((demo) => (
+                  <Button
+                    key={demo.email}
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    loading={loading && email === demo.email}
+                    disabled={loading}
+                    onClick={() => { void handleDemoLogin(demo.email, demo.password); }}
+                  >
+                    {demo.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </form>
       </div>
     </div>

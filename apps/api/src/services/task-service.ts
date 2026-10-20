@@ -117,7 +117,11 @@ export class TaskService {
 
     if (payload.assigneeId !== undefined) {
       const assignee = await prisma.user.findFirst({
-        where: { id: payload.assigneeId, companyId: user.companyId },
+        where: {
+          id: payload.assigneeId,
+          companyId: user.companyId,
+          OR: [{ projectMembers: { some: { projectId } } }, { managedProjects: { some: { id: projectId } } }],
+        },
         select: { id: true },
       });
       if (!assignee) {
@@ -232,7 +236,14 @@ export class TaskService {
 
     if (payload.assigneeId !== undefined && payload.assigneeId !== null) {
       const assignee = await prisma.user.findFirst({
-        where: { id: payload.assigneeId, companyId: user.companyId },
+        where: {
+          id: payload.assigneeId,
+          companyId: user.companyId,
+          OR: [
+            { projectMembers: { some: { projectId: task.projectId } } },
+            { managedProjects: { some: { id: task.projectId } } },
+          ],
+        },
         select: { id: true },
       });
       if (!assignee) {

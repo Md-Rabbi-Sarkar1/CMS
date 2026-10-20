@@ -26,7 +26,7 @@ userRouter.get("/invitations", authenticate, authorize("ADMIN"), (req, res, next
   userController.listInvitations(req, res, next).catch(next);
 });
 
-userRouter.get("/", authenticate, authorize("ADMIN"), (req, res, next) => {
+userRouter.get("/", authenticate, authorize("ADMIN", "PROJECT_MANAGER"), (req, res, next) => {
   userController.listUsers(req, res, next).catch(next);
 });
 

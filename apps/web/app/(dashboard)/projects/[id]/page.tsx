@@ -1,11 +1,12 @@
 import Link from "next/link";
 
 import { StatusBadge } from "@/components/ui/badge";
+import { ManageProjectTeam } from "@/components/domain/manage-project-team";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ErrorState, PageHeader, Spinner } from "@/components/ui/feedback";
 import { getCurrentUser } from "@/lib/auth";
 import { api, ApiError } from "@/lib/api-client";
-import type { Project, ProjectMember, Task } from "@/lib/types";
+import type { Project, ProjectMember, Task, User } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   let project: Project | null = null;
   let tasks: Task[] = [];
   let members: ProjectMember[] = [];
+  let users: User[] = [];
   let error: string | null = null;
 
   try {
@@ -25,6 +27,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       api.get<{ items: Task[] }>(`/projects/${id}/tasks`).then((r) => r.items),
       api.get<ProjectMember[]>(`/projects/${id}/members`),
     ]);
+    if (user.role === "ADMIN" || user.role === "PROJECT_MANAGER") {
+      users = (await api.get<{ items: User[] }>("/users", { pageSize: 100 })).items;
+    }
   } catch (err) {
     error = err instanceof ApiError ? err.message : "Failed to load project.";
   }
@@ -167,7 +172,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 <p className="px-5 py-6 text-center text-sm text-slate-500">No members yet.</p>
               ) : (
                 <ul className="divide-y divide-slate-100">
-                  {members.map((m) => (
+              {members.map((m) => (
                     <li key={m.id} className="px-5 py-3">
                       <p className="font-medium text-slate-900">{m.user.name}</p>
                       <p className="text-xs text-slate-500">{m.user.email}</p>
@@ -175,6 +180,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   ))}
                 </ul>
               )}
+              {user.role === "ADMIN" || user.role === "PROJECT_MANAGER" ? (
+                <ManageProjectTeam projectId={id} members={members} users={users} />
+              ) : null}
             </CardBody>
           </Card>
         </div>

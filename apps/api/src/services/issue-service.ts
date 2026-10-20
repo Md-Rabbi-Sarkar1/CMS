@@ -13,6 +13,7 @@ import {
 import { NotificationEventService } from "./notification-event-service.js";
 import { ConflictError, NotFoundError } from "../utils/errors.js";
 import type { JWTPayload } from "../types/auth.js";
+import { accessibleProjectIds, assertProjectAccess as assertAccessibleProject } from "./project-access.js";
 
 export interface IssueResponse {
   id: string;
@@ -99,11 +100,15 @@ export class IssueService {
   }
 
   async create(user: JWTPayload, payload: CreateIssueInput): Promise<IssueResponse> {
-    await assertProjectAccess(user, payload.projectId);
+    await assertAccessibleProject(user, payload.projectId);
 
     if (payload.assigneeId !== undefined) {
       const assignee = await prisma.user.findFirst({
-        where: { id: payload.assigneeId, companyId: user.companyId },
+        where: {
+          id: payload.assigneeId,
+          companyId: user.companyId,
+          projectMembers: { some: { projectId: payload.projectId } },
+        },
         select: { id: true },
       });
       if (!assignee) {
@@ -152,8 +157,10 @@ export class IssueService {
       pageSize: query.pageSize,
     };
     if (query.projectId !== undefined) filters.projectId = query.projectId;
+    else if (user.role !== "ADMIN") filters.projectIds = await accessibleProjectIds(user);
     if (query.status !== undefined) filters.status = query.status;
     if (query.assigneeId !== undefined) filters.assigneeId = query.assigneeId;
+    if (user.role === "ENGINEER" || user.role === "WORKER") filters.assigneeId = user.sub;
 
     const result = await this.issueRepository.list(filters);
     return {
@@ -169,6 +176,10 @@ export class IssueService {
     if (!issue) {
       throw new NotFoundError("Issue not found");
     }
+    await assertAccessibleProject(user, issue.projectId);
+    if ((user.role === "ENGINEER" || user.role === "WORKER") && issue.reporterId !== user.sub && issue.assigneeId !== user.sub) {
+      throw new NotFoundError("Issue not found");
+    }
     return toResponse(issue);
   }
 
@@ -180,7 +191,11 @@ export class IssueService {
 
     if (payload.assigneeId !== undefined && payload.assigneeId !== null) {
       const assignee = await prisma.user.findFirst({
-        where: { id: payload.assigneeId, companyId: user.companyId },
+        where: {
+          id: payload.assigneeId,
+          companyId: user.companyId,
+          projectMembers: { some: { projectId: issue.projectId } },
+        },
         select: { id: true },
       });
       if (!assignee) {
@@ -189,6 +204,9 @@ export class IssueService {
     }
 
     await assertProjectAccess(user, issue.projectId);
+    if ((user.role === "ENGINEER" || user.role === "WORKER") && issue.reporterId !== user.sub && issue.assigneeId !== user.sub) {
+      throw new NotFoundError("Issue not found");
+    }
 
     if (payload.status !== undefined && payload.status !== issue.status) {
       const allowed = ISSUE_STATUS_TRANSITIONS[issue.status] ?? [];
