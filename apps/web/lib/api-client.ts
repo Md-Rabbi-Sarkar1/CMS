@@ -25,7 +25,9 @@ const API_URL =
 
 function buildUrl(path: string, params?: Record<string, string | number | undefined>): string {
   const base = API_URL.endsWith("/api/v1") ? API_URL : `${API_URL}/api/v1`;
-  const url = new URL(`${base}${path}`);
+  const url = API_URL.startsWith("/")
+    ? new URL(`${base}${path}`, window.location.origin)
+    : new URL(`${base}${path}`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
