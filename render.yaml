@@ -33,9 +33,6 @@ services:
       # CORS origin: the public web origin, e.g. https://construction-ops-web.onrender.com
       - key: WEB_URL
         sync: false
-      # Shared cookie scope for the Render web and API subdomains.
-      - key: COOKIE_DOMAIN
-        value: .onrender.com
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -53,11 +50,14 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      # Inlined into the browser bundle at build time; set it once in the
-      # Render dashboard to the public API origin
-      # (e.g. https://construction-ops-api.onrender.com/api/v1).
+      # Browser traffic uses the same-origin Next.js proxy so auth cookies
+      # remain available to both browser navigation and server rendering.
       - key: NEXT_PUBLIC_API_URL
-        sync: false
+        value: /api/proxy/api/v1
+      - key: API_ORIGIN
+        value: https://construction-ops-api.onrender.com
+      - key: API_INTERNAL_URL
+        value: https://construction-ops-api.onrender.com/api/v1
       - key: NEXT_PUBLIC_ENABLE_DEMO_LOGIN
         value: "true"
 
