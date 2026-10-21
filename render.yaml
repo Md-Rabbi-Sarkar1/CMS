@@ -1,25 +1,16 @@
-# Phase 22 — Render blueprint (see docs/DEPLOYMENT.md for the full runbook).
-#
-# The repository documentation only specifies "cloud hosting", so this
-# blueprint is one minimal expression of the documented architecture. It
-# renders the same two services from Phase 20 (api + web + database) using
-# platform-native Node builds; any Docker-capable host can instead deploy the
-# Phase 20 images directly (render.yaml is optional, the app is not tied to it).
+# Render blueprint for the Docker-based production deployment.
 
 services:
   - type: web
     name: construction-ops-api
     plan: free
-    runtime: node
-    buildCommand: >-
-      pnpm install --frozen-lockfile --prod=false &&
-      pnpm -w build:packages &&
-      pnpm --filter @construction-ops/database exec prisma migrate deploy &&
-      pnpm --filter @construction-ops/database exec prisma db seed &&
-      pnpm --filter @construction-ops/api build
-    startCommand: node apps/api/dist/index.js
-    # Free Render services do not support preDeployCommand, so migrations
-    # and the idempotent demo seed run at the end of the build command.
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    # Run pending migrations when the container starts, then launch the API.
+    dockerCommand: >-
+      sh -c "pnpm --filter @construction-ops/database exec prisma migrate deploy &&
+      node apps/api/dist/index.js"
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
@@ -41,12 +32,9 @@ services:
   - type: web
     name: construction-ops-web
     plan: free
-    runtime: node
-    buildCommand: >-
-      pnpm install --frozen-lockfile --prod=false &&
-      pnpm --filter @construction-ops/shared --filter @construction-ops/validation build &&
-      pnpm --filter @construction-ops/web build
-    startCommand: pnpm --filter @construction-ops/web start
+    runtime: docker
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
     envVars:
       - key: NODE_ENV
         value: production
