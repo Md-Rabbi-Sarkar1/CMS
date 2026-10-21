@@ -47,4 +47,4 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:4000/api/v1/health > /dev/null 2>&1 || exit 1
 
-CMD ["node", "apps/api/dist/index.js"]
+CMD ["sh", "apps/api/start.sh"]

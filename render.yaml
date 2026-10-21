@@ -7,10 +7,6 @@ services:
     runtime: docker
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-    # Run pending migrations when the container starts, then launch the API.
-    dockerCommand: >-
-      sh -c "pnpm --filter @construction-ops/database exec prisma migrate deploy &&
-      node apps/api/dist/index.js"
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
